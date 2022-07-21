@@ -1,0 +1,21 @@
+{:aliases
+ {:run {:exec-fn xtexample/run
+        ;; needed on JDK16+ to allow Netty/Arrow access DirectBuffer internals:
+        :jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                   "-Dio.netty.tryReflectionSetAccessible=true"]}}
+
+ :deps
+ {com.xtdb.labs/core2-core
+  {:git/url "ssh://git@github.com/xtdb/core2"
+   ;; update this to the latest SHA:
+   :git/sha "ec02f037b88413a953d2137bce7a49b465473357"
+   :deps/root "core"}
+
+  ;; TODO: users shouldn't have to specify this manually
+  com.widdindustries/time-literals {:mvn/version "0.1.6"}
+
+  ;;org.clojure/java.data {:mvn/version "1.0.95"}
+  pro.juxt.clojars-mirrors.com.github.seancorfield/next.jdbc {:mvn/version "1.2.674"}
+  org.postgresql/postgresql {:mvn/version "42.2.18" #_#_ :scope "provided"}
+  ;;com.zaxxer/HikariCP {:mvn/version "4.0.3"}
+  }}
