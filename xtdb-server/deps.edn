@@ -1,0 +1,26 @@
+{:aliases
+ {:run {:exec-fn xtexample/run
+        ;; needed on JDK16+ to allow Netty/Arrow access DirectBuffer internals:
+        :jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+                   "-Dio.netty.tryReflectionSetAccessible=true"]}}
+
+ :deps
+ {com.xtdb.labs/core2-core
+  {:git/url "ssh://git@github.com/xtdb/core2"
+   ;; update this to the latest SHA:
+   :git/sha "65cb800d2ff6f95bff0a224a586fd95c8e511e9e"
+   :deps/root "core"}
+
+  ;; TODO: users shouldn't have to specify this manually
+  com.widdindustries/time-literals {:mvn/version "0.1.6"}
+
+  ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
+  ch.qos.logback/logback-core {:mvn/version "1.2.3"}
+  org.slf4j/slf4j-api {:mvn/version "1.7.30"}}
+
+ :paths
+ ["src" "resources"]
+
+ :mvn/repos
+ {"clojars"
+  {:url "https://repo.clojars.org/"}}}

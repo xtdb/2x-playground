@@ -1,13 +1,27 @@
 # core2-playground
 
-Add the following to your `~/.clojure/deps.edn`:
+## Start a server
 
-```clojure
-:nREPL
-{:extra-deps
-  {nrepl/nrepl {:mvn/version "0.9.0"}}}
+`cd xtdb-server && ./run.sh`
+
+## psql
+
+Install `psql` if you don't have it already.
+Some package managers offer the Postgres client in isolation (ubuntu has `postgresql-client`) but this is surprisingly uncommon.
+
+```
+sudo apt-get install -y postgresql
+sudo pacman -S postgresql
+brew install postgresql
 ```
 
-Run `clojure -X:deps prep :force true` to install deps.
+Start a server in `xtdb-server`.
 
-Run `clj -M:nREPL -m nrepl.cmdline` and connect from your editor.
+Run `./psql/run.sh` to start a client. Try a query from `./psql`.
+
+## Clojure
+
+The Clojure examples consume Core2 directly, running a client and server in the same process for convenience.
+The client code still speaks to Core2 over the `pgwire` protocol.
+
+`./clojure/README.adoc`
