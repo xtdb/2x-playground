@@ -1,0 +1,82 @@
+
+-- failing in pgwire:
+SELECT trades.trade_user, trades.dan_map, trades.trade_date
+FROM trades WHERE trades.exchange = 'juxt';
+-- produces in xtdb-server/log/core2-2022-07-22.log:
+-- 19:06:26.524 DEBUG core2.sql.pgwire - Read client msg {:port 5432, :cid 1, :msg #'core2.sql.pgwire/msg-simple-query, :char8 Q}
+-- 19:06:26.532 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 T, :name msg-row-description}
+-- 19:06:26.610 DEBUG core2.sql.pgwire - An exception was caught during query result set iteration
+-- java.lang.Exception: Unexpected type encountered by pgwire (class clojure.lang.PersistentArrayMap)
+-- 	at core2.sql.pgwire$json_clj.invokeStatic(pgwire.clj:486)
+-- 	at core2.sql.pgwire$json_clj.invoke(pgwire.clj:431)
+-- 	at clojure.core$comp$fn__5876.invoke(core.clj:2586)
+-- 	at clojure.core$comp$fn__5876.invoke(core.clj:2586)
+-- 	at clojure.core$juxt$fn__5893.invoke(core.clj:2618)
+-- 	at core2.sql.pgwire$cmd_send_query_result$fn__16736.invoke(pgwire.clj:1255)
+-- 	at core2.sql.pgwire$cmd_send_query_result.invokeStatic(pgwire.clj:1254)
+-- 	at core2.sql.pgwire$cmd_send_query_result.invoke(pgwire.clj:1226)
+-- 	at core2.sql.pgwire$cmd_await_query_result.invokeStatic(pgwire.clj:1339)
+-- 	at core2.sql.pgwire$cmd_await_query_result.invoke(pgwire.clj:1293)
+-- 	at core2.sql.pgwire$cmd_exec_query.invokeStatic(pgwire.clj:1402)
+-- 	at core2.sql.pgwire$cmd_exec_query.invoke(pgwire.clj:1358)
+-- 	at core2.sql.pgwire$cmd_exec_stmt.invokeStatic(pgwire.clj:1474)
+-- 	at core2.sql.pgwire$cmd_exec_stmt.invoke(pgwire.clj:1451)
+-- 	at core2.sql.pgwire$cmd_simple_query.invokeStatic(pgwire.clj:1485)
+-- 	at core2.sql.pgwire$cmd_simple_query.invoke(pgwire.clj:1480)
+-- 	at core2.sql.pgwire$conn_loop.invokeStatic(pgwire.clj:1648)
+-- 	at core2.sql.pgwire$conn_loop.invoke(pgwire.clj:1567)
+-- 	at core2.sql.pgwire$connect$fn__16866.invoke(pgwire.clj:1711)
+-- 	at core2.sql.pgwire$connect.invokeStatic(pgwire.clj:1709)
+-- 	at core2.sql.pgwire$connect.invoke(pgwire.clj:1665)
+-- 	at core2.sql.pgwire$accept_loop$fn__16880$fn__16881$fn__16882.invoke(pgwire.clj:1784)
+-- 	at clojure.lang.AFn.run(AFn.java:22)
+-- 	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+-- 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+-- 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+-- 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+-- 	at java.base/java.lang.Thread.run(Thread.java:833)
+-- 19:06:26.610 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 E, :name msg-error-response}
+-- 19:06:26.611 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 Z, :name msg-ready}
+
+
+-- failing in pgwire:
+SELECT trades.trade_user, trades.trade_date, trades.bird
+FROM trades WHERE trades.exchange = 'juxt';
+-- produces in xtdb-server/log/core2-2022-07-22.log:
+-- 19:13:34.776 DEBUG core2.sql.pgwire - Read client msg {:port 5432, :cid 1, :msg #'core2.sql.pgwire/msg-simple-query, :char8 Q}
+-- 19:13:34.784 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 T, :name msg-row-description}
+-- 19:13:34.864 DEBUG core2.sql.pgwire - An exception was caught during query result set iteration
+-- java.lang.Exception: Unexpected type encountered by pgwire (class clojure.lang.PersistentArrayMap)
+-- 	at core2.sql.pgwire$json_clj.invokeStatic(pgwire.clj:486)
+-- 	at core2.sql.pgwire$json_clj.invoke(pgwire.clj:431)
+-- 	at clojure.core$comp$fn__5876.invoke(core.clj:2586)
+-- 	at clojure.core$comp$fn__5876.invoke(core.clj:2586)
+-- 	at clojure.core$juxt$fn__5893.invoke(core.clj:2618)
+-- 	at core2.sql.pgwire$cmd_send_query_result$fn__16736.invoke(pgwire.clj:1255)
+-- 	at core2.sql.pgwire$cmd_send_query_result.invokeStatic(pgwire.clj:1254)
+-- 	at core2.sql.pgwire$cmd_send_query_result.invoke(pgwire.clj:1226)
+-- 	at core2.sql.pgwire$cmd_await_query_result.invokeStatic(pgwire.clj:1339)
+-- 	at core2.sql.pgwire$cmd_await_query_result.invoke(pgwire.clj:1293)
+-- 	at core2.sql.pgwire$cmd_exec_query.invokeStatic(pgwire.clj:1402)
+-- 	at core2.sql.pgwire$cmd_exec_query.invoke(pgwire.clj:1358)
+-- 	at core2.sql.pgwire$cmd_exec_stmt.invokeStatic(pgwire.clj:1474)
+-- 	at core2.sql.pgwire$cmd_exec_stmt.invoke(pgwire.clj:1451)
+-- 	at core2.sql.pgwire$cmd_simple_query.invokeStatic(pgwire.clj:1485)
+-- 	at core2.sql.pgwire$cmd_simple_query.invoke(pgwire.clj:1480)
+-- 	at core2.sql.pgwire$conn_loop.invokeStatic(pgwire.clj:1648)
+-- 	at core2.sql.pgwire$conn_loop.invoke(pgwire.clj:1567)
+-- 	at core2.sql.pgwire$connect$fn__16866.invoke(pgwire.clj:1711)
+-- 	at core2.sql.pgwire$connect.invokeStatic(pgwire.clj:1709)
+-- 	at core2.sql.pgwire$connect.invoke(pgwire.clj:1665)
+-- 	at core2.sql.pgwire$accept_loop$fn__16880$fn__16881$fn__16882.invoke(pgwire.clj:1784)
+-- 	at clojure.lang.AFn.run(AFn.java:22)
+-- 	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+-- 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+-- 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+-- 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+-- 	at java.base/java.lang.Thread.run(Thread.java:833)
+-- 19:13:34.864 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 E, :name msg-error-response}
+-- 19:13:34.865 DEBUG core2.sql.pgwire - Writing server message (with body) {:char8 Z, :name msg-ready}
+-- 19:13:37.137 DEBUG core2.sql.pgwire - Read client msg {:port 5432, :cid 1, :msg #'core2.sql.pgwire/msg-terminate, :char8 X}
+-- 19:13:37.137 DEBUG core2.sql.pgwire - Connection loop exiting (closing) {:port 5432, :cid 1}
+-- 19:13:37.139 DEBUG core2.sql.pgwire - Connection ended {:cid 1, :port 5432}

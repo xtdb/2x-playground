@@ -1,0 +1,6 @@
+= Core2 Playground: Python
+
+== Setup
+
+* Install Python3 for your operating system.
+* Run `./install.sh` to install the required python dependencies.
