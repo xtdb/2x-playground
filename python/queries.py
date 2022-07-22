@@ -70,6 +70,7 @@ def pandas_example():
     print(df.to_json)
 
 
+print("Please note that Python examples are broken at the moment.")
 # dbapi_plain()
 # sqlalchemy_core2()
 pandas_example()

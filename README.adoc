@@ -1,8 +1,11 @@
 = core2-playground
 
+
 == Start a server
 
-`cd xtdb-server && ./run.sh`
+* Make sure Clojure is installed
+* `cd xtdb-server && ./run.sh`
+
 
 == psql
 
@@ -21,6 +24,7 @@ brew install postgresql
 * Run `./psql/run.sh` to start a client
 * Try a query from `./psql/queries.sql`
 
+
 == Clojure
 
 The Clojure examples consume Core2 directly, running a client and server in the same process for convenience.
@@ -28,6 +32,7 @@ This means you do not need to start a Core2 server, like normal.
 However, the client code still speaks to Core2 over the `pgwire` protocol.
 
 `./clojure/README.adoc`
+
 
 == Python
 

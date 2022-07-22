@@ -3,7 +3,14 @@
 This is an example Core2 wrapper.
 At the time of this writing, it is the shortest path to running a functional Core2 instance.
 
-If you want to run a Core2 instance you can query from `psql` or a remote client, use this.
+If you want to run a Core2 instance you can query from `psql` or a remote client
+(Python, Ruby, JavaScript, CSharp, Java, etc.), use this.
+
+
+== Running
+
+* Make sure Clojure is installed
+* `./run.sh`
 
 
 == Debugging
