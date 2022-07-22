@@ -8,7 +8,7 @@
  {com.xtdb.labs/core2-core
   {:git/url "ssh://git@github.com/xtdb/core2"
    ;; update this to the latest SHA:
-   :git/sha "ec02f037b88413a953d2137bce7a49b465473357"
+   :git/sha "65cb800d2ff6f95bff0a224a586fd95c8e511e9e"
    :deps/root "core"}
 
   ;; TODO: users shouldn't have to specify this manually
@@ -21,6 +21,8 @@
 
   metosin/jsonista {:mvn/version "0.3.6"}
   com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
+
+  ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
 
   }
  :mvn/repos { "clojars" {:url "https://repo.clojars.org/"}}}
