@@ -4,7 +4,7 @@
 == Start a server
 
 * Make sure Clojure is installed
-* `cd xtdb-server && ./run.sh`
+* `cd xtdb-server-clj && ./run.sh`
 
 
 == psql
@@ -20,7 +20,7 @@ brew install postgresql
 # etc.
 ----
 
-* Start a server in `xtdb-server`
+* Start a server in `xtdb-server-clj`
 * Run `./psql/run.sh` to start a client
 * Try a query from `./psql/queries.sql`
 
@@ -36,6 +36,6 @@ However, the client code still speaks to Core2 over the `pgwire` protocol.
 
 == Python
 
-* Start a server in `xtdb-server`
+* Start a server in `xtdb-server-clj`
 * Install dependencies: `./python/install.sh`
 * Edit and run `./python/queries.py`
