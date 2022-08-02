@@ -1,0 +1,12 @@
+= XTDB Docker Image
+
+You can start an XTDB Docker container with the following:
+
+[source,sh]
+----
+docker pull xtdb/core2
+docker run -p 5432:5432 xtdb/core2
+----
+
+After you see `| PGWire server started on port:  5432` you can start querying XTDB
+using any of the top-level examples in this repository, such as `psql` or `python`.

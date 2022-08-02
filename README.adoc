@@ -1,7 +1,36 @@
 = core2-playground
 
+This repository provides a wide range of examples which allow you to experiment with the XTDB Core2 UX.
+
+----
+.
+├── README.adoc
+│
+│   # clients:
+├── clojure
+├── psql
+├── python
+│
+│   # servers:
+├── xtdb-server-clj
+└── xtdb-server-docker
+----
 
 == Start a server
+
+=== Option 1: Docker
+
+[source,sh]
+----
+docker pull xtdb/core2
+docker run -p 5432:5432 xtdb/core2
+----
+
+=== Option 2: JAR
+
+TODO
+
+=== Option 3: Clojure in-process
 
 * Make sure Clojure is installed
 * `cd xtdb-server-clj && ./run.sh`
@@ -10,7 +39,8 @@
 == psql
 
 Install `psql` (Postgres) if you don't have it already.
-Some package managers offer the Postgres client in isolation (ubuntu has `postgresql-client`) but this is surprisingly uncommon.
+Some package managers offer the Postgres client in isolation
+(ubuntu has `postgresql-client`) but this is surprisingly uncommon.
 
 [source,sh]
 ----
@@ -20,7 +50,7 @@ brew install postgresql
 # etc.
 ----
 
-* Start a server in `xtdb-server-clj`
+* Start an XTDB server
 * Run `./psql/run.sh` to start a client
 * Try a query from `./psql/queries.sql`
 
@@ -28,14 +58,15 @@ brew install postgresql
 == Clojure
 
 The Clojure examples consume Core2 directly, running a client and server in the same process for convenience.
-This means you do not need to start a Core2 server, like normal.
-However, the client code still speaks to Core2 over the `pgwire` protocol.
+This means you do not need to start an external Core2 server.
+(Though you still can, of course.)
+The client code still speaks to Core2 over the `pgwire` protocol using JDBC.
 
 `./clojure/README.adoc`
 
 
 == Python
 
-* Start a server in `xtdb-server-clj`
+* Start an XTDB server
 * Install dependencies: `./python/install.sh`
 * Edit and run `./python/queries.py`
