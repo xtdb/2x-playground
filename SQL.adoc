@@ -1,0 +1,98 @@
+= XTDB SQL Dialect
+
+The following document assumes you are using XTDB's Postgres Wire Protocol support.
+
+
+== Transactions
+
+By default, XTDB is in `READ ONLY` mode.
+To commit a transaction, you will need to enter `READ WRITE` mode explicitly:
+
+[source,sql]
+----
+set transaction READ WRITE;
+begin;
+-- your DML here
+commit;
+----
+
+=== INSERT
+
+[source,sql]
+----
+set transaction READ WRITE;
+begin;
+insert into users (id,name) values (1234,'wot');
+commit;
+----
+
+The result of this statement might be surprising:
+
+----
+--
+(0 rows)
+INSERT 0 0
+----
+
+This is because XTDB is asynchronous.
+Your data has reached the Transaction Log but hasn't fully committed to the Object Store yet.
+
+=== UPDATE
+
+Currently fails:
+
+[source,sh]
+----
+=> set transaction READ WRITE;
+=> begin;
+=*> update users set name='deo' where id=1234;
+ERROR:  sql was parsed but unexpected statement encountered (report as an xtdb core2 bug)
+----
+
+=== DELETE
+
+Currently fails:
+
+[source,sh]
+----
+=> set transaction READ WRITE;
+=> begin;
+=*> delete from users where id=1234;
+_iid | _row-id | application_time_start | application_time_end
+------+---------+------------------------+----------------------
+(0 rows)
+
+DELETE 0
+=*> commit;
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+----
+
+
+== Queries
+
+=== SELECT *
+
+You might be surprised to see that `select * from` doesn't behave the way you might expect from a database with schema-on-write:
+
+[source,sh]
+----
+=> select * from users;
+ERROR:  unexpected server error during query execution
+----
+
+XTDB will eventually support `select * from` but, at the moment, you must fully qualify your queries to access the underlying document store.
+
+=== SELECT
+
+Assuming the `insert` statement above, you will see:
+
+[source,sh]
+----
+=> select users.name from users;
+ name
+-------
+ "wot"
+(1 row)
+----

@@ -5,6 +5,7 @@ This repository provides a wide range of examples which allow you to experiment 
 ----
 .
 ├── README.adoc
+├── SQL.adoc
 │
 │   # clients:
 ├── clojure
@@ -36,6 +37,13 @@ TODO
 * `cd xtdb-server-clj && ./run.sh`
 
 
+== XTDB SQL
+
+The SQL dialect available in XTDB tries very hard to adhere to the SQL Specification.
+There are small deviations from the spec where absolutely required.
+Read more in https://github.com/xtdb/core2-playground/blob/main/SQL.adoc[`SQL.adoc`].
+
+
 == psql
 
 Install `psql` (Postgres) if you don't have it already.
@@ -55,6 +63,13 @@ brew install postgresql
 * Try a query from `./psql/queries.sql`
 
 
+== Python
+
+* Start an XTDB server
+* Install dependencies: `./python/install.sh`
+* Edit and run `./python/queries.py`
+
+
 == Clojure
 
 The Clojure examples consume Core2 directly, running a client and server in the same process for convenience.
@@ -63,10 +78,3 @@ This means you do not need to start an external Core2 server.
 The client code still speaks to Core2 over the `pgwire` protocol using JDBC.
 
 `./clojure/README.adoc`
-
-
-== Python
-
-* Start an XTDB server
-* Install dependencies: `./python/install.sh`
-* Edit and run `./python/queries.py`
