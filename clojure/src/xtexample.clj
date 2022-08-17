@@ -1,7 +1,7 @@
 (ns xtexample
   (:require [core2.api :as c2]
             [core2.local-node :as local-node]
-            [core2.sql.pgwire :as pgwire]
+;            [core2.pgwire :as pgwire]
             [juxt.clojars-mirrors.nextjdbc.v1v2v674.next.jdbc :as jdbc]
             [juxt.clojars-mirrors.nextjdbc.v1v2v674.next.jdbc.connection :as jdbcc]
             [juxt.clojars-mirrors.nextjdbc.v1v2v674.next.jdbc.result-set :as jdbcr]
@@ -33,7 +33,7 @@
 (def ->json json/write-value-as-string)
 (def <-json #(json/read-value % mapper))
 
-(defn ->pgobject
+#_(defn ->pgobject
   "Transforms Clojure data to a PGobject that contains the data as
   JSON. PGObject type defaults to `jsonb` but can be changed via
   metadata key `:pgtype`"
@@ -43,7 +43,7 @@
       (.setType pgtype)
       (.setValue (->json x)))))
 
-(defn <-pgobject
+#_(defn <-pgobject
   "Transform PGobject containing `json` or `jsonb` value to Clojure
   data."
   [^org.postgresql.util.PGobject v]
@@ -57,7 +57,7 @@
 (comment
   (def node (local-node/start-node {}))
 
-  (def server (pgwire/serve node))
+  #_(def server (pgwire/serve node))
 
   (run {})
 

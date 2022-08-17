@@ -8,7 +8,7 @@
  {com.xtdb.labs/core2-core
   {:git/url "ssh://git@github.com/xtdb/core2"
    ;; update this to the latest SHA:
-   :git/sha "65cb800d2ff6f95bff0a224a586fd95c8e511e9e"
+   :git/sha "cf32cc4eb7202d8ee6ae1ba45cccaafc3b48c2cf"
    :deps/root "core"}
 
   ;; TODO: users shouldn't have to specify this manually
