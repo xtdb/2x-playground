@@ -6,7 +6,8 @@
             [juxt.clojars-mirrors.nextjdbc.v1v2v674.next.jdbc.connection :as jdbcc]
             [juxt.clojars-mirrors.nextjdbc.v1v2v674.next.jdbc.result-set :as jdbcr]
             [jsonista.core :as json]
-            [honey.sql :as sql])
+            [honey.sql :as sql]
+            [portal.api :as p])
   (:import (java.sql Connection)
            (org.postgresql.util PGobject)))
 
