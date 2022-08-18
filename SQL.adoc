@@ -84,7 +84,12 @@ You might be surprised to see that `select * from` doesn't behave the way you mi
 ERROR:  unexpected server error during query execution
 ----
 
-XTDB will eventually support `select * from` but, at the moment, you must fully qualify your queries to access the underlying document store.
+However, you can qualify your `select *` columns:
+
+[source,sql]
+----
+select * from users as users(id,name);
+----
 
 === SELECT
 
