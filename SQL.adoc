@@ -45,9 +45,11 @@ Currently fails:
 ----
 => set transaction READ WRITE;
 => begin;
-=*> update users set name='deo' where id=1234;
+=*> update users set name='deo' where users.id=1234;
 ERROR:  sql was parsed but unexpected statement encountered (report as an xtdb core2 bug)
 ----
+
+Be aware that the `where` clause requires fully-qualified columns, like `select`.
 
 === DELETE
 
