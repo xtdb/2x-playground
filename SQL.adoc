@@ -18,15 +18,18 @@ commit;
 
 === INSERT
 
+For now, `insert` behaves like `upsert`.
+You are permitted to run the following statements twice in a row and the second will not be rejected.
+By default, `select` will query across all of `APPLICATION_TIME`, so you will see two rows returned as well.
+
 [source,sql]
 ----
-set transaction READ WRITE;
-begin;
+start transaction READ WRITE;
 insert into users (id,name) values (1234,'wot');
 commit;
 ----
 
-The result of this statement might be surprising:
+The result of the `insert` statement might be surprising:
 
 ----
 --
@@ -35,18 +38,15 @@ INSERT 0 0
 ----
 
 This is because XTDB is asynchronous.
-Your data has reached the Transaction Log but hasn't fully committed to the Object Store yet.
+Your data has reached the Transaction Log but isn't fully committed to the Object Store until `commit`.
 
 === UPDATE
 
-Currently fails:
-
 [source,sh]
 ----
-=> set transaction READ WRITE;
-=> begin;
-=*> update users set name='deo' where users.id=1234;
-ERROR:  sql was parsed but unexpected statement encountered (report as an xtdb core2 bug)
+start transaction READ WRITE;
+update users set name='deo' where users.id=1234;
+commit;
 ----
 
 Be aware that the `where` clause requires fully-qualified columns, like `select`.
@@ -57,18 +57,9 @@ Currently fails:
 
 [source,sh]
 ----
-=> set transaction READ WRITE;
-=> begin;
-=*> delete from users where id=1234;
-_iid | _row-id | application_time_start | application_time_end
-------+---------+------------------------+----------------------
-(0 rows)
-
-DELETE 0
-=*> commit;
-server closed the connection unexpectedly
-	This probably means the server terminated abnormally
-	before or while processing the request.
+start transaction READ WRITE;
+delete from users where users.id=1234;
+commit;
 ----
 
 
