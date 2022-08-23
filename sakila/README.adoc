@@ -1,0 +1,9 @@
+Download https://github.com/jOOQ/sakila/blob/main/sqlite-sakila-db/sqlite-sakila-insert-data.sql?raw=true to this directory.
+
+Make sure you have https://babashka.org/ installed.
+
+Run `./sql-gen.sh`
+
+From an active psql CLI session (connected to XTDB, not Postgres!), run `\i sakila-final.sql` to import the data.
+
+Consider the examples in `xt-sakila-examples.sql`
