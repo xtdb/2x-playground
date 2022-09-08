@@ -10,8 +10,7 @@ To commit a transaction, you will need to enter `READ WRITE` mode explicitly:
 
 [source,sql]
 ----
-set transaction READ WRITE;
-begin;
+start transaction READ WRITE;
 -- your DML here
 commit;
 ----
@@ -52,8 +51,6 @@ commit;
 Be aware that the `where` clause requires fully-qualified columns, like `select`.
 
 === DELETE
-
-Currently fails:
 
 [source,sh]
 ----
