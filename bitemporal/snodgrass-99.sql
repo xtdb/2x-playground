@@ -106,6 +106,8 @@ CREATE TABLE Property (
   ...
 */
 
+-- [10.2] MODIFICATIONS
+
 /*
   Let's follow the history, over both valid time and transaction time, of a at
   in Aalborg, at Skovvej 30 for the month of January 1998.
@@ -118,12 +120,12 @@ CREATE TABLE Property (
   DATE "9999-12-31", CURRENT_TIMESTAMP, DATE "9999-12-31")
 */
 
--- for XTDB an explicit ID is needed, let's not complicate everything with UUIDs for now...
-
 SET SESSION CHARACTERISTICS AS APPLICATION_TIME_DEFAULTS AS_OF_NOW;
 
-INSERT INTO Prop_Owner (id, customer_number, property_number)
-VALUES (1, 145, 7797);
+-- for XTDB an explicit ID is needed, let's not complicate everything with UUIDs for now...
+
+INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
+VALUES (1, 145, 7797, DATE '1998-01-10');
 
 -- Here we have but one region, associated with Eva Nielsen, that starts today
 -- in transaction time and extends to until changed, and that begins also at
@@ -139,9 +141,8 @@ SELECT *
 
 
 -- Peter Olsen buys the flat; this legal transaction transfers ownership from Eva to him
-UPDATE Prop_Owner
-   SET customer_number = 827
- WHERE Prop_Owner.property_number = 7797;
+INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
+VALUES (1, 827, 7797, DATE '1998-01-15');
 
 -- Observe the change
 SELECT *
@@ -188,6 +189,7 @@ history.
 -- We perform a current deletion when we find out that Peter has sold the property to someone else, with the mortgage handled by another mortgage company. From the bank's point of view, the property no longer exists as of (a valid time of) now.
 DELETE
 FROM Prop_Owner
+     FOR PORTION OF APPLICATION_TIME FROM DATE '1998-01-20' TO END_OF_TIME
 WHERE Prop_Owner.property_number = 7797;
 
 -- current view is deleted, 0 rows
@@ -215,37 +217,18 @@ SELECT *
                system_time_start,
                system_time_end);
 
--- Sequenced Modifications - For bitemporal tables, the modication is sequenced only on valid time; the modication is always a current modification on transaction time, from now to until changed.
+-- [10.2.2] Sequenced Modifications - For bitemporal tables, the modication is sequenced only on valid time; the modication is always a current modification on transaction time, from now to until changed.
 
--- A sequenced insertion performed on January 23: Eva actually purchased the flat on January 3.
 /*
 INSERT INTO Prop_Owner (customer_number, property_number, VT_Begin,
                         VT_End, TT_Start, TT_Stop)
 VALUES (145, 7797, DATE "1998-01-03",
         DATE "1998-01-10", CURRENT_TIMESTAMP, DATE "9999-12-31")*/
 
--- What was the earliest insert?
-SELECT MIN(Prop_Owner.application_time_start)
- FROM Prop_Owner
-         FOR ALL SYSTEM_TIME
-         FOR ALL APPLICATION_TIME
- WHERE Prop_Owner.id = 1;
 
--- TODO https://github.com/xtdb/core2/issues/424 We can now use this value
-INSERT INTO prop_owner (id, customer_number, property_number, application_time_start, application_time_end)
-SELECT 1,
-       145,
-       7797, DATE '1998-01-03', tmp.app_start
-FROM
-  (SELECT MIN(Prop_Owner.system_time_start) AS app_start
-      FROM Prop_Owner
-             FOR ALL SYSTEM_TIME
-             FOR ALL APPLICATION_TIME
-    WHERE Prop_Owner.id = 1) AS tmp;
-
--- workaround
+-- A sequenced insertion performed on January 23: Eva actually purchased the flat on January 3.
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start, application_time_end)
-VALUES (1, 145, 7797, TIMESTAMP '1998-01-03 00:00:00', TIMESTAMP '1999-01-03 00:00:00');
+VALUES (1, 145, 7797, DATE '1998-01-03', DATE '1998-01-10');
 
 -- look again
 SELECT *
@@ -267,3 +250,386 @@ retroactive, postactive, and current, when its period of applicability starts in
   the past and extends into the future (e.g., a fixed-term assignment that
   started in the past and ends at a designated date in the future)
 */
+
+-- We learn now 26 that Eva bought the flat not on January 10, as initially
+-- thought, nor on January 3, as later corrected, but on January 5. This requires a
+-- sequenced version of the following deletion:
+DELETE
+FROM Prop_Owner
+FOR PORTION OF APPLICATION_TIME
+FROM DATE '1998-01-03' TO DATE '1998-01-05';
+
+-- look again
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS x (id,
+               customer_number,
+               property_number,
+               application_time_start,
+               application_time_end,
+               system_time_start,
+               system_time_end);
+
+-- Updates
+-- We next learn that Peter bought the flat on January 12, not January 15 as
+-- previously thought. This requires a sequenced version of the following update.
+-- This update requires a period of applicability of January 12 through 15,
+-- setting the customer number to 145. Effectively, the ownership must be
+-- transferred from Eva to Peter for those three days.
+INSERT INTO Prop_Owner (id,
+                        customer_number,
+                        property_number,
+                        application_time_start,
+                        application_time_end)
+VALUES (1, 145, 7797, DATE '1998-01-05', DATE '1998-01-12'),
+       (1, 827, 7797, DATE '1998-01-12', DATE '1998-01-20');
+
+-- look again
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS x (id,
+               customer_number,
+               property_number,
+               application_time_start,
+               application_time_end,
+               system_time_start,
+               system_time_end);
+
+-- [10.2.3] Nonsequenced Modifications
+-- We saw before that no mapping was required for nonsequenced modifications on
+-- valid-time state tables; such statements treat the (valid) timestamps
+-- identically to the other columns.
+-- As an example, consider the modification "Delete all records with a valid-time
+-- duration of exactly one week." This modifcation is clearly (valid-time)
+-- nonsequenced: (1) it depends heavily on the representation, ooking for rows
+-- with a particular kind of valid timestamp, (2) it does not apply on a per
+-- instant basis, and (3) it mentions "records", that is, the recorded information,
+-- rather than "reality".
+
+-- Firstly let's identify the record(s):
+SELECT *
+  FROM Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS x (id,
+               customer_number,
+               property_number,
+               application_time_start,
+               application_time_end,
+               system_time_start,
+               system_time_end)
+ WHERE (x.application_time_end - x.application_time_start) = (DATE '1970-01-08' - DATE '1970-01-01');
+
+-- Now we can delete:
+DELETE
+FROM Prop_Owner
+FOR ALL APPLICATION_TIME AS x
+WHERE (x.application_time_end - x.application_time_start) = (DATE '1970-01-08' - DATE '1970-01-01');
+
+-- look again
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS x (id,
+               customer_number,
+               property_number,
+               application_time_start,
+               application_time_end,
+               system_time_start,
+               system_time_end);
+
+-- [10.3.1] Time-Slice Queries
+
+-- A common query or view over the valid-time state table is to capture the
+-- state of the enterprise at some point in the past (or future). This query is
+-- termed a valid-time time-slice. For an auditable tracking log changes, we
+-- might seek to reconstruct the state of the monitored table as of a date in
+-- the past; this query is termed a transaction time-slice. As a bitemporal
+-- table captures valid and transaction time, both time-slice variants are
+-- appropriate on such tables.
+
+-- Time-slices are useful also in understanding the information content of a
+-- bitemporal table. A transaction time-slice of a bitem- poral table takes as
+-- input a transaction-time instant and results in a valid-time state table that
+-- was present in the database at that specified time.
+
+-- A transaction time-slice query corresponds to a vertical slice in the time diagram.
+
+-- A valid time-slice query corresponds to a horizontal slice as input a
+-- valid-time instant and results in a transaction-time in the time diagram,
+-- resulting in state table capturing when information concerning that specified
+-- valid time was recorded in the database. A valid time-slice is a
+-- transaction-time state table.
+
+-- As mentioned earlier in this file, the transaction times in the examples are
+-- historical and must be adapted, so we will use the 6 system_times returned by
+-- the following query, which are unique to your instance
+SELECT DISTINCT x.system_time_start
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME AS x
+ ORDER BY x.system_time_start ASC;
+
+-- e.g.
+--        system_time_start
+--  -------------------------------
+--  "2022-09-11T15:13:53.846919Z"
+--  "2022-09-11T15:14:00.376721Z"
+--  "2022-09-11T15:14:06.605243Z"
+--  "2022-09-11T15:14:11.991653Z"
+--  "2022-09-11T15:14:17.017727Z"
+--  "2022-09-11T15:14:42.592297Z"
+
+-- These correspond 1:1 with the following entries:
+--  DATE '1998-01-10'
+--  DATE '1998-01-15'
+--  DATE '1998-01-23'
+--  DATE '1998-01-26'
+--  DATE '1998-01-28'
+--  DATE '1998-01-30'
+
+
+-- Be sure to replace `T` with ` `, remove `Z`, and append `+00:00` when copying the literals for use with TIMESTAMP (TODO https://github.com/xtdb/core2/issues/431)
+
+-- Give the history of owners of the flat at Skovvej 30 in Aalborg as of before our session began:
+SELECT *
+  FROM Prop_Owner
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:13:52+00:00'
+         FOR ALL APPLICATION_TIME
+         AS x (customer_number, application_time_start, application_time_end);
+
+-- Applying this time-slice results in an empty table, as no history was yet known about that property.
+
+-- Taking a transaction time-slice as of January 14 results in a history with one entry:
+-- i.e. use a TIMESTAMP between the 1st and 2nd entries (do this similarly again hereafter)
+SELECT *
+  FROM Prop_Owner
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:13:54+00:00'
+         FOR ALL APPLICATION_TIME
+         AS x (customer_number, application_time_start, application_time_end);
+
+-- On January 14, we thought that Eva was the current owner of that property. We
+-- now know that Peter purchased the property on January 12, and that Eva never
+-- owned the property at all on January 14, but that is 20-20 hindsight. The
+-- information we had on January 14 indicated that Eva bought the property on the
+-- 10th, and still owns it.
+
+-- The time-slice as of January 18 tells a different story:
+SELECT *
+  FROM Prop_Owner
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR ALL APPLICATION_TIME
+         AS x (customer_number, application_time_start, application_time_end);
+
+-- On January 18 we thought that Eva had purchased the flat on January 10 and sold
+-- it to Peter, who now owns it. A transaction time-slice can be visualized on
+-- the time diagram as a vertical line situated at the specified date. This line
+-- gives the valid-time history of the enterprise that was stored in the table
+-- on that date.
+
+-- Continuing, we take a transaction time-slice as of January 29:
+SELECT *
+  FROM Prop_Owner
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR ALL APPLICATION_TIME
+         AS x (customer_number, application_time_start, application_time_end);
+
+-- Give the history of owners of the flat at Skovvej 30 in Aalborg as best known
+SELECT *
+  FROM Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS x (customer_number, application_time_start, application_time_end);
+
+-- Only Peter ever had ownership of the property, since all records with a
+-- valid-time duration of exactly one week were deleted. Peter's ownership was for
+-- all of eight days, January 12 to January 20
+
+-- We can also cut the time diagram horizontally. A valid time-slice of a
+-- bitemporal table takes as input a valid-time instant and results in a
+-- transaction-time state table capturing when information concerning that
+-- specified valid time was recorded in the database
+
+
+-- When was information about the owners of the flat at Skovvej 30 in Aalborg on
+-- January 4, 1998, recorded in the Prop Owner table?
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR APPLICATION_TIME AS OF DATE '1998-01-04'
+         AS x (customer_number, system_time_start, system_time_end);
+
+-- Applying this time-slice results in one row, indicating that this information
+-- - that the property was owned by Eva on January - was inserted into the table
+-- on January 26 and subsequently deleted, as it was found to be incorrect, on
+-- January 26.
+
+-- The valid time-slice on January 13 is more interesting.
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR APPLICATION_TIME AS OF DATE '1998-01-13'
+         AS x (customer_number, system_time_start, system_time_end);
+
+-- NOTE: excess zero-width period appears - could be coalesced https://github.com/xtdb/core2/issues/403
+
+-- A bitemporal time-slice query extracts a single point from a time diagram,
+-- resulting in a snapshot table. A bitemporal time-slice takes as input two
+-- instants, a valid-time and a transaction-time instant, and results in a
+-- snapshot state of the information regarding the enterprise at that valid
+-- time, as recorded in the database at that transaction time. The result is the
+-- facts located at the intersection of the two lines, in this case, Eva.
+
+-- Give the owner of the flat at Skovvej 30 in Aalborg on January 13 as stored
+-- in the Prop Owner table on January 18.
+SELECT *
+  FROM Prop_Owner
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR APPLICATION_TIME AS OF DATE '1998-01-13'
+         AS x (customer_number, system_time_start, system_time_end);
+
+-- [10.3.2] The Spectrum of Bitemporal Queries
+
+-- Chapter 6 discussed the three major kinds of queries on valid-time state
+-- tables: current ("valid now"), sequenced ("history of"), and nonsequenced
+-- ("at some time"). Chapter 8 showed that there were three analogous kinds of
+-- queries on transaction- time state tables: current ("as best known"),
+-- sequenced ("when was it recorded"), and nonsequenced (e.g., "when was . . .
+-- erroneously changed"). As a bitemporal table includes both valid-time and
+-- transaction-time support, and as these two types of time are orthogonal, it
+-- turns out that all nine combinations are possible on such tables.
+
+-- To illustrate, we will take a nontemporal query and provide all the
+-- variations of that query.
+
+-- Before doing that, we add one more row to the Prop Owner table.
+-- Peter Olsen bought another flat, at Bygaden 4 in Aalborg on January 15, 1998;
+-- this was recorded on January 31, 1998.
+
+INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
+VALUES (2, 827, 3621, DATE '1998-01-15');
+
+-- look again
+SELECT *
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS x (id,
+               customer_number,
+               property_number,
+               application_time_start,
+               application_time_end,
+               system_time_start,
+               system_time_end);
+
+-- Overlaying this information on the time diagram, we see that for five days
+-- Peter owned two properties, at Bygaden and Skovvej; he sold the Skovvej
+-- property on January 20, but retains the Bygaden property.
+
+-- We start with a nontemporal query, a simple equijoin, pretending that the
+-- Prop_Owner table is a snapshot table
+-- What other properties are owned by the customer who owns property 7797?
+
+SELECT P2.property_number
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS P1,
+       Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+         AS P2
+ WHERE P1.property_number = 7797
+   AND P2.property_number <> P1.property_number
+   AND P1.customer_number = P2.customer_number;
+
+-- 3 identical results
+
+-- Case 1: Valid-time current and transaction-time current
+-- What properties are owned by the customer who owns property 7797, as best
+-- known?
+
+SELECT P2.property_number
+  FROM Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS P1,
+       Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS P2
+ WHERE P1.property_number = 7797
+   AND P2.property_number <> P1.property_number
+   AND P1.customer_number = P2.customer_number
+   AND P1.APPLICATION_TIME CONTAINS CURRENT_TIMESTAMP
+   AND P2.APPLICATION_TIME CONTAINS CURRENT_TIMESTAMP;
+
+-- Current in valid time is implemented by requiring that the period of validity
+-- overlap "now"; current in transaction time is implicit. The result, a
+-- snapshot table, is in this case the empty table because now, as best known,
+-- no one owns property 7797. (Peter owned it for some nine days in January, but
+-- doesn't own it now.)
+
+-- Case 2: Valid-time sequenced and transaction-time current
+-- What properties are or were owned by the customer who owned at the same time
+-- property 7797, as best known?
+
+SELECT P2.property_number, P2.application_time_start, P2.application_time_end
+  FROM Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS P1,
+       Prop_Owner
+         FOR ALL APPLICATION_TIME
+         AS P2
+ WHERE P1.property_number = 7797
+   AND P2.property_number <> P1.property_number
+   AND P1.customer_number = P2.customer_number
+   AND P1.APPLICATION_TIME OVERLAPS P2.APPLICATION_TIME;
+
+
+-- misc
+
+SELECT Prop_Owner.customer_number
+FROM Prop_Owner
+FOR ALL SYSTEM_TIME
+FOR ALL APPLICATION_TIME
+ WHERE  PERIOD ((SELECT MIN(x.system_time_start)
+                   FROM Prop_Owner
+                          FOR ALL SYSTEM_TIME
+                          FOR ALL APPLICATION_TIME
+                          AS x),
+                (SELECT MAX(x.system_time_start)
+                   FROM Prop_Owner
+                          FOR ALL SYSTEM_TIME
+                          FOR ALL APPLICATION_TIME
+                          AS x))
+          CONTAINS Prop_Owner.SYSTEM_TIME;
+
+
+SELECT Prop_Owner.customer_number
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME
+ WHERE  PERIOD ((SELECT DISTINCT x.system_time_start
+     FROM Prop_Owner
+            FOR ALL SYSTEM_TIME
+            FOR ALL APPLICATION_TIME AS x
+    ORDER BY x.system_time_start ASC
+    LIMIT 1),
+   (SELECT DISTINCT x.system_time_start
+       FROM Prop_Owner
+              FOR ALL SYSTEM_TIME
+              FOR ALL APPLICATION_TIME AS x
+      ORDER BY x.system_time_start DESC
+      LIMIT 1))
+        CONTAINS Prop_Owner.SYSTEM_TIME;
+
+
+SELECT DISTINCT x.system_time_start
+  FROM Prop_Owner
+         FOR ALL SYSTEM_TIME
+         FOR ALL APPLICATION_TIME AS x
+ ORDER BY x.system_time_start ASC
+          OFFSET 5
+          LIMIT 1;
