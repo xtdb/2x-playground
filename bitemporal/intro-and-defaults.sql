@@ -56,12 +56,12 @@ SELECT foo.id,
 -- otherwise previous app_start will be used by default
 
 -- therefore we will use XTDB's enhanced "AS_OF_NOW" temporal UX instead
-SET SESSION CHARACTERISTICS AS APPLICATION_TIME_DEFAULTS AS_OF_NOW;
+SET application_time_defaults TO as_of_now;
 
 -- It can be reset as needed to compare & contrast
-SET SESSION CHARACTERISTICS AS APPLICATION_TIME_DEFAULTS ISO_STANDARD;
+SET application_time_defaults TO iso_standard;
 -- But let's continue with XTDB's enhanced UX
-SET SESSION CHARACTERISTICS AS APPLICATION_TIME_DEFAULTS AS_OF_NOW;
+SET application_time_defaults TO as_of_now;
 
 
 INSERT INTO posts (id, user_id, text, application_time_start)

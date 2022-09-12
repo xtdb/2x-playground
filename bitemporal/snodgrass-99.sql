@@ -120,7 +120,7 @@ CREATE TABLE Property (
   DATE "9999-12-31", CURRENT_TIMESTAMP, DATE "9999-12-31")
 */
 
-SET SESSION CHARACTERISTICS AS APPLICATION_TIME_DEFAULTS AS_OF_NOW;
+SET application_time_defaults TO as_of_now;
 
 -- for XTDB an explicit ID is needed, let's not complicate everything with UUIDs for now...
 
@@ -328,6 +328,7 @@ DELETE
 FROM Prop_Owner
 FOR ALL APPLICATION_TIME AS x
 WHERE (x.application_time_end - x.application_time_start) = (DATE '1970-01-08' - DATE '1970-01-01');
+;; TODO 7 days issue?
 
 -- look again
 SELECT *
@@ -553,17 +554,11 @@ SELECT P2.property_number
 -- known?
 
 SELECT P2.property_number
-  FROM Prop_Owner
-         FOR ALL APPLICATION_TIME
-         AS P1,
-       Prop_Owner
-         FOR ALL APPLICATION_TIME
-         AS P2
- WHERE P1.property_number = 7797
-   AND P2.property_number <> P1.property_number
-   AND P1.customer_number = P2.customer_number
-   AND P1.APPLICATION_TIME CONTAINS CURRENT_TIMESTAMP
-   AND P2.APPLICATION_TIME CONTAINS CURRENT_TIMESTAMP;
+FROM Prop_Owner AS P1,
+     Prop_Owner AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number;
 
 -- Current in valid time is implemented by requiring that the period of validity
 -- overlap "now"; current in transaction time is implicit. The result, a
@@ -575,61 +570,224 @@ SELECT P2.property_number
 -- What properties are or were owned by the customer who owned at the same time
 -- property 7797, as best known?
 
-SELECT P2.property_number, P2.application_time_start, P2.application_time_end
-  FROM Prop_Owner
-         FOR ALL APPLICATION_TIME
-         AS P1,
-       Prop_Owner
-         FOR ALL APPLICATION_TIME
-         AS P2
+SELECT P2.property_number,
+       CASE
+           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
+           ELSE P1.application_time_start
+       END AS VT_Begin,
+       CASE
+           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
+           ELSE P2.application_time_end
+       END AS VT_End
+FROM Prop_Owner
+FOR ALL APPLICATION_TIME AS P1,
+        Prop_Owner
+FOR ALL APPLICATION_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.application_time_start < P2.application_time_end
+  AND P2.application_time_start < P1.application_time_end
+  AND P1.system_time_end = END_OF_TIME
+  AND P2.system_time_end = END_OF_TIME;
+
+-- For those five days in January, Peter owned both properties
+
+-- Case 3: Valid-time nonsequenced and transaction-time current
+-- What properties were owned by the customer who owned at any time property
+-- 7797, as best known?
+
+SELECT P2.property_number
+  FROM Prop_Owner FOR ALL APPLICATION_TIME AS P1, Prop_Owner FOR ALL APPLICATION_TIME AS P2
  WHERE P1.property_number = 7797
    AND P2.property_number <> P1.property_number
    AND P1.customer_number = P2.customer_number
-   AND P1.APPLICATION_TIME OVERLAPS P2.APPLICATION_TIME;
+   AND P1.system_time_end = END_OF_TIME
+   AND P2.system_time_end = END_OF_TIME;
 
+-- Peter owned both properties. While in this case there was a time when Peter
+-- owned both properties simultaneously, the query does not require that. Even
+-- if Peter had bought the second property on a valid time of January 31, that
+-- property would still be returned by this query.
 
--- misc
+-- Case 4: Valid-time current and transaction-time sequenced
+-- What properties did we think are owned by the customer who owns property
+-- 7797?
 
-SELECT Prop_Owner.customer_number
+SELECT P2.property_number,
+       CASE
+           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
+           ELSE P1.system_time_start
+       END AS Recorded_Start,
+       CASE
+           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
+           ELSE P2.system_time_end
+       END AS Recorded_Stop
+FROM Prop_Owner FOR ALL SYSTEM_TIME AS P1,
+     Prop_Owner FOR ALL SYSTEM_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.system_time_start < P2.system_time_end
+  AND P2.system_time_start < P1.system_time_end;
+
+-- The result, a snapshot table with two additional timestamp columns, is the
+-- empty table because there was no time in which we thought that Peter
+-- currently owns both properties.
+
+-- Case 5: Valid-time sequenced and transaction-time sequenced
+-- When did we think that some property, at some time, was owned by the customer
+-- who owned at the same time property 7797?
+
+SELECT P2.property_number,
+       CASE
+           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
+           ELSE P1.application_time_start
+       END AS VT_Start,
+       CASE
+           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
+           ELSE P2.application_time_end
+       END AS VT_End,
+       CASE
+           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
+           ELSE P1.system_time_start
+       END AS Recorded_Start,
+       CASE
+           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
+           ELSE P2.system_time_end
+       END AS Recorded_Stop
+FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
+     Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.application_time_start < P2.application_time_end
+  AND P2.application_time_start < P1.application_time_end
+  AND P1.system_time_start < P2.system_time_end
+  AND P2.system_time_start < P1.system_time_end;
+
+-- Here we have sequenced in both valid time and transaction time. This is the
+-- most involved of all the queries. A query sequenced in both valid time and
+-- transaction time, computing the intersection of two rectangle.
+-- For those five days in January, Peter owned both properties. That information
+-- was recorded on January 31 and is still thought to be true (a
+-- transaction-stop time of "until changed").
+
+-- Case 6: Valid-time nonsequenced and transaction-time sequenced
+-- When did we think that some property, at some time, was owned by the customer
+-- who owned at any time property 7797?
+
+SELECT P2.property_number,
+       CASE
+           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
+           ELSE P1.system_time_start
+       END AS Recorded_Start,
+       CASE
+           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
+           ELSE P2.system_time_end
+       END AS Recorded_Stop
 FROM Prop_Owner
 FOR ALL SYSTEM_TIME
-FOR ALL APPLICATION_TIME
- WHERE  PERIOD ((SELECT MIN(x.system_time_start)
-                   FROM Prop_Owner
-                          FOR ALL SYSTEM_TIME
-                          FOR ALL APPLICATION_TIME
-                          AS x),
-                (SELECT MAX(x.system_time_start)
-                   FROM Prop_Owner
-                          FOR ALL SYSTEM_TIME
-                          FOR ALL APPLICATION_TIME
-                          AS x))
-          CONTAINS Prop_Owner.SYSTEM_TIME;
+FOR ALL APPLICATION_TIME AS P1,
+        Prop_Owner
+FOR ALL SYSTEM_TIME
+FOR ALL APPLICATION_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.system_time_start < P2.system_time_end
+  AND P2.system_time_start < P1.system_time_end;
 
+-- From January 31 on, we thought that Peter had owned those two properties,
+-- perhaps not simultaneously.
 
-SELECT Prop_Owner.customer_number
-  FROM Prop_Owner
-         FOR ALL SYSTEM_TIME
-         FOR ALL APPLICATION_TIME
- WHERE  PERIOD ((SELECT DISTINCT x.system_time_start
-     FROM Prop_Owner
-            FOR ALL SYSTEM_TIME
-            FOR ALL APPLICATION_TIME AS x
-    ORDER BY x.system_time_start ASC
-    LIMIT 1),
-   (SELECT DISTINCT x.system_time_start
-       FROM Prop_Owner
-              FOR ALL SYSTEM_TIME
-              FOR ALL APPLICATION_TIME AS x
-      ORDER BY x.system_time_start DESC
-      LIMIT 1))
-        CONTAINS Prop_Owner.SYSTEM_TIME;
+-- Case 7: Valid-time current and transaction-time nonsequenced
+-- When was it recorded that a property is owned by the customer who owns
+-- property 7797?
 
+SELECT P2.property_number,
+       P2.system_time_start AS Recorded_Start
+FROM Prop_Owner
+FOR ALL SYSTEM_TIME AS P1,
+        Prop_Owner
+FOR ALL SYSTEM_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.system_time_start <= P2.system_time_start
+  AND P2.system_time_start < P1.system_time_end;
 
-SELECT DISTINCT x.system_time_start
-  FROM Prop_Owner
-         FOR ALL SYSTEM_TIME
-         FOR ALL APPLICATION_TIME AS x
- ORDER BY x.system_time_start ASC
-          OFFSET 5
-          LIMIT 1;
+-- The result, a snapshot table, is empty because we never thought that Peter
+-- currently owns two properties.
+
+-- Case 8: Valid-time sequenced and transaction-time nonsequenced
+-- When was it recorded that a property is or was owned by the customer who
+-- owned at the same time property 7797?
+
+SELECT P2.property_number,
+       CASE
+           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
+           ELSE P1.application_time_start
+       END AS VT_Begin,
+       CASE
+           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
+           ELSE P2.application_time_end
+       END AS VT_End,
+       P2.system_time_start AS Recorded_Start
+FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
+     Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P2
+WHERE P1.property_number = 7797
+  AND P2.property_number <> P1.property_number
+  AND P1.customer_number = P2.customer_number
+  AND P1.application_time_start < P2.application_time_end
+  AND P2.application_time_start < P1.application_time_end
+  AND P1.system_time_start <= P2.system_time_start
+  AND P2.system_time_start < P1.system_time_end;
+
+-- This query is similar to Case 2 (valid-time sequenced/transaction-time
+-- current), with a different predicate for transaction time.
+-- For those five days in January, Peter owned both properties; this information
+-- was recorded on January 31
+
+-- Case 9: Valid-time nonsequenced and transaction-time nonsequenced
+-- When was it recorded that a property was owned by the customer who owned at
+-- some time property 7797?
+
+SELECT P2.property_number, P2.system_time_start AS Recorded_Start
+  FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
+       Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P2
+ WHERE P1.property_number = 7797
+   AND P2.property_number <> P1.property_number
+   AND P1.customer_number = P2.customer_number
+   AND P1.system_time_start <= P2.system_time_start
+   AND P2.system_time_start < P1.system_time_end;
+
+-- The two main points of this exercise are that all combinations do make sense,
+-- and all can be composed by considering valid time and transaction time
+-- separately.
+
+-- Of these nine types of queries, a few are more prevalent. The most common is
+-- the current/current queries, "now, as best known". These queries correspond
+-- to queries on the nontemporal version of the table.
+
+-- Perhaps the next most common kind of query is a sequenced/current query,
+-- "history, as best known".
+-- e.g. How has the estimated value of the property at Bygaden 4 varied over time?
+
+-- Transaction time is supported in the Prop_Owner table to track the changes
+-- and to correct errors. A common query searches for the transaction that
+-- stored the current information in valid time. This is a current/nonsequenced
+-- query.
+-- e.g. When was the estimated value for the property at Bygaden 4 stored?
+
+-- Sequenced/nonsequenced queries allow you to determine when invalid
+-- information about the history was recorded.
+-- e.g. Who has owned the property at Bygaden 4, and when was this information recorded?
+
+-- Nonsequenced/nonsequenced queries can probe the interaction between valid
+-- time and transaction time, identifying, for example, retroactive changes
+-- e.g. List all retroactive changes made to the Prop Owner table
+
+-- Bonus exercises for the reader:
+-- Insert more data into Prop_Owner to cause entries to appear in results tables
+-- where previously there were no results.
