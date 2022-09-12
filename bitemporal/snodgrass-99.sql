@@ -570,6 +570,8 @@ WHERE P1.property_number = 7797
 -- What properties are or were owned by the customer who owned at the same time
 -- property 7797, as best known?
 
+-- NOTE: LEAST/GREATEST are not ISO-approved, and not currently implemented
+
 SELECT P2.property_number,
        CASE
            WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
@@ -586,10 +588,7 @@ FOR ALL APPLICATION_TIME AS P2
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.application_time_start < P2.application_time_end
-  AND P2.application_time_start < P1.application_time_end
-  AND P1.system_time_end = END_OF_TIME
-  AND P2.system_time_end = END_OF_TIME;
+  AND P1.APPLICATION_TIME OVERLAPS P2.APPLICATION_TIME;
 
 -- For those five days in January, Peter owned both properties
 
@@ -601,9 +600,7 @@ SELECT P2.property_number
   FROM Prop_Owner FOR ALL APPLICATION_TIME AS P1, Prop_Owner FOR ALL APPLICATION_TIME AS P2
  WHERE P1.property_number = 7797
    AND P2.property_number <> P1.property_number
-   AND P1.customer_number = P2.customer_number
-   AND P1.system_time_end = END_OF_TIME
-   AND P2.system_time_end = END_OF_TIME;
+   AND P1.customer_number = P2.customer_number;
 
 -- Peter owned both properties. While in this case there was a time when Peter
 -- owned both properties simultaneously, the query does not require that. Even
@@ -628,8 +625,7 @@ FROM Prop_Owner FOR ALL SYSTEM_TIME AS P1,
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.system_time_start < P2.system_time_end
-  AND P2.system_time_start < P1.system_time_end;
+  AND P1.SYSTEM_TIME OVERLAPS P2.SYSTEM_TIME;
 
 -- The result, a snapshot table with two additional timestamp columns, is the
 -- empty table because there was no time in which we thought that Peter
@@ -661,10 +657,8 @@ FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.application_time_start < P2.application_time_end
-  AND P2.application_time_start < P1.application_time_end
-  AND P1.system_time_start < P2.system_time_end
-  AND P2.system_time_start < P1.system_time_end;
+  AND P1.APPLICATION_TIME OVERLAPS P2.APPLICATION_TIME
+  AND P1.SYSTEM_TIME OVERLAPS P2.SYSTEM_TIME;
 
 -- Here we have sequenced in both valid time and transaction time. This is the
 -- most involved of all the queries. A query sequenced in both valid time and
@@ -695,8 +689,7 @@ FOR ALL APPLICATION_TIME AS P2
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.system_time_start < P2.system_time_end
-  AND P2.system_time_start < P1.system_time_end;
+  AND P1.SYSTEM_TIME OVERLAPS P2.SYSTEM_TIME;
 
 -- From January 31 on, we thought that Peter had owned those two properties,
 -- perhaps not simultaneously.
@@ -714,8 +707,7 @@ FOR ALL SYSTEM_TIME AS P2
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.system_time_start <= P2.system_time_start
-  AND P2.system_time_start < P1.system_time_end;
+  AND P1.SYSTEM_TIME CONTAINS PERIOD(P2.system_time_start, P2.system_time_start);
 
 -- The result, a snapshot table, is empty because we never thought that Peter
 -- currently owns two properties.
@@ -739,10 +731,8 @@ FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
 WHERE P1.property_number = 7797
   AND P2.property_number <> P1.property_number
   AND P1.customer_number = P2.customer_number
-  AND P1.application_time_start < P2.application_time_end
-  AND P2.application_time_start < P1.application_time_end
-  AND P1.system_time_start <= P2.system_time_start
-  AND P2.system_time_start < P1.system_time_end;
+  AND P1.APPLICATION_TIME OVERLAPS P2.APPLICATION_TIME
+  AND P1.SYSTEM_TIME CONTAINS PERIOD(P2.system_time_start, P2.system_time_start);
 
 -- This query is similar to Case 2 (valid-time sequenced/transaction-time
 -- current), with a different predicate for transaction time.
@@ -759,8 +749,7 @@ SELECT P2.property_number, P2.system_time_start AS Recorded_Start
  WHERE P1.property_number = 7797
    AND P2.property_number <> P1.property_number
    AND P1.customer_number = P2.customer_number
-   AND P1.system_time_start <= P2.system_time_start
-   AND P2.system_time_start < P1.system_time_end;
+   AND P1.SYSTEM_TIME CONTAINS PERIOD(P2.system_time_start, P2.system_time_start);
 
 -- The two main points of this exercise are that all combinations do make sense,
 -- and all can be composed by considering valid time and transaction time
