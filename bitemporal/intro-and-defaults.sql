@@ -25,7 +25,8 @@ SELECT foo.id, foo.bar FROM foo;
 SELECT * FROM foo AS x (id, bar);
 
 -- Bitemporal invariants are built-in and automatic
--- XTDB maintains 4 time columns, immutably insertions, only closing the transaction_time_end
+-- XTDB maintains 4 time columns, for immutable insertions where the only
+-- internal mutation happening is the "closing" of system_time_end
 INSERT INTO foo (id, bar) VALUES ('a', 2);
 
 -- XTDB maintains 4 time columns
