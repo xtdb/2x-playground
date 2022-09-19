@@ -71,5 +71,5 @@ FROM posts
 FOR APPLICATION_TIME AS OF DATE '2025-01-02';
 SELECT posts.text FROM posts;
 
--- FOR ALL works per table
+-- FOR / FOR ALL works per table, and you can reference the same table multiple times (as normal)
 -- FOR ALL SYSTEM_TIME must come before FOR ALL APPLICATION_TIME
