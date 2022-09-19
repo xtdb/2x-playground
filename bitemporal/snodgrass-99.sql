@@ -11,8 +11,8 @@ SET application_time_defaults TO as_of_now;
 -- This tutorial is based on the examples in Chapter 10 (p301 of the pdf)
 
 -- NOTE:
---  transaction-time = system-time
---  valid-time = application-time
+--  transaction-time = system-time = "Recorded"
+--  valid-time = application-time = "VT"
 --  these source examples were written with example system-times during the year 1998
 --  these source example assumed SQL-92 features and usage patterns
 

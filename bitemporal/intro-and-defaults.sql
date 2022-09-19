@@ -14,8 +14,6 @@
 -- Columns are dynamic and all type handling is polymorphic
 INSERT INTO foo (id, bar) VALUES ('a', 1);
 
--- TODO list of types for values and IDs
-
 -- XTDB appears ~normal
 -- Columns must therefore always be qualified with their table because there is no schema to infer from
 SELECT foo.id, foo.bar FROM foo;
@@ -68,9 +66,9 @@ SET application_time_defaults TO as_of_now;
 INSERT INTO posts (id, user_id, text, application_time_start)
 VALUES (9012, 5678, 'Happy 2025!', DATE '2025-01-01');
 
-SELECT posts.text FROM posts
-                         FOR APPLICATION_TIME AS OF DATE '2025-01-02';
-
+SELECT posts.text
+FROM posts
+FOR APPLICATION_TIME AS OF DATE '2025-01-02';
 SELECT posts.text FROM posts;
 
 -- FOR ALL works per table
