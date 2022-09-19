@@ -1,69 +1,64 @@
--- Correct use of this file assumes that you have already run the following
--- command in an active XTDB connection:
+SET application_time_defaults TO as_of_now;
 
--- SET application_time_defaults TO as_of_now;
+-- WARNING: Correct use of this file assumes that you have already run the previous
+-- command in an active XTDB connection
 
-\echo 'WARNING: Run `SET application_time_defaults TO as_of_now;` manually before importing this file (when using psql `\i` etc.)';
+-- INTRODUCTION
 
-/*
-  INTRODUCTION
+-- Derived from "Developing Time-Oriented Database Applications in SQL" by Richard T. Snodgrass
+-- A digital copy of the book is available freely online from the author:
+-- https://www2.cs.arizona.edu/~rts/tdbbook.pdf
+-- This tutorial is based on the examples in Chapter 10 (p301 of the pdf)
 
-  Derived from "Developing Time-Oriented Database Applications in SQL" by Richard T. Snodgrass
-  A digital copy of the book is available freely online from the author:
-  https://www2.cs.arizona.edu/~rts/tdbbook.pdf
+-- NOTE:
+--  transaction-time = system-time
+--  valid-time = application-time
+--  these source examples were written with example system-times during the year 1998
+--  these source example assumed SQL-92 features and usage patterns
 
-  This file is based on the examples in Chapter 10 (p301 of the pdf)
+-- Various excerpts have been adapted and included below. However, the source
+-- material (the book) is worth heavily referring to for the complete context,
+-- and to compare the differences side-by-side between the SQL-92 examples and
+-- XTDB's SQL:2011 implementation.
 
-  NOTE:
-  - transaction-time = system-time
-  - valid-time = application-time
-  - these source examples were written with example system-times during the year 1998
-  - these source example assumed SQL-92 features and usage patterns
+-- Use of https://bitemporal-visualizer.github.io/ is recommended.
 
-  Various excerpts have been adapted and included below. However, the source
-  material (the book) is worth heavily referring to for the complete context,
-  and to compare the differences side-by-side between the SQL-92 examples and
-  XTDB's SQL:2011 implementation.
-*/
+-- BACKGROUND
 
+-- Information is the key asset of many companies. Nykredit, a major Danish
+-- mortgage bank, is a good example. In 1989, the Danish legislature changed the
+-- Mortgage Credit Act to allow mortgage providers to market loans directly to
+-- customers and through real estate agents
 
-/*
-  Information is the key asset of many companies. Nykredit, a major Danish
-  mortgage bank, is a good example. In 1989, the Danish legislature changed the
-  Mortgage Credit Act to allow mortgage providers to market loans directly to
-  customers and through real estate agents
+-- One of the challenges was achieving high data quality on the customers and
+-- their loans, while expanding the traditional focus to also include customer
+-- support. Managers needed access to up-to-date data to set benchmarks and
+-- identify problems in various areas of the business. The sheer volume of the
+-- data, nine million loans to eight million customers concerning seven million
+-- properties, demands that eliminating errors in the data must be highly
+-- efficient.
 
-  One of the challenges was achieving high data quality on the customers and
-  their loans, while expanding the traditional focus to also include customer
-  support. Managers needed access to up-to-date data to set benchmarks and
-  identify problems in various areas of the business. The sheer volume of the
-  data, nine million loans to eight million customers concerning seven million
-  properties, demands that eliminating errors in the data must be highly
-  efficient
-
-  It was mandated that changes to critical tables be tracked. This implies that
-  the tables have system-time support. As these tables also model changes
-  in reality, they require application-time support. The result is termed a bitemporal
-  table, reflecting these two aspects of underlying temporal support. With such
-  tables, IT personnel can first determine when the erroneous data was stored (a
-  system time), roll back the table to that point, and look at the
-  application-time history. They can then determine what the correct application-time
-  history should be. At that point, they can tell the customer service person
-  what needs to be changed, or if the error was in the processing of a user
-  transaction, they may update the database manually.
-*/
+-- It was mandated that changes to critical tables be tracked. This implies that
+-- the tables have system-time support. As these tables also model changes in
+-- reality, they require application-time support. The result is termed a
+-- bitemporal table, reflecting these two aspects of underlying temporal
+-- support. With such tables, IT personnel can first determine when the
+-- erroneous data was stored (a system time), roll back the table to that point,
+-- and look at the application-time history. They can then determine what the
+-- correct application-time history should be. At that point, they can tell the
+-- customer service person what needs to be changed, or if the error was in the
+-- processing of a user transaction, they may update the database manually.
 
 -- [10.2] MODIFICATIONS
 
-/*
-  Let's follow the history, over both application time and system time, of a flat
-  in Aalborg, at Skovvej 30 for the month of January 1998.
+-- Let's follow the history, over both application time and system time, of a flat
+-- in Aalborg, at Skovvej 30 for the month of January 1998.
 
-  Starting with Current Modifications (Inserts, Updates, Deletes)
-*/
+-- Starting with Current Modifications (Inserts, Updates, Deletes)
 
 -- For XTDB an explicit ID is needed, let's not complicate everything with UUIDs for now...
 
+-- (MOD1) Eva Nielsen buys the flat at Skovvej 30 in Aalborg on January 10, 1998.
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
 VALUES (1, 145, 7797, DATE '1998-01-10');
 
@@ -79,12 +74,13 @@ SELECT *
                         system_time_start,
                         system_time_end);
 
+-- Paste the output of this query and others like it into https://bitemporal-visualizer.github.io/
 
--- Peter Olsen buys the flat; this legal system transfers ownership from Eva to him
+-- (MOD2) Peter Olsen buys the flat; this legal system transfers ownership from Eva to him
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
 VALUES (1, 827, 7797, DATE '1998-01-15');
 
--- Observe the change
+-- Observe the change in as-of 'now'
 SELECT *
   FROM Prop_Owner AS x (id,
                         customer_number,
@@ -94,7 +90,7 @@ SELECT *
                         system_time_start,
                         system_time_end);
 
--- See the full history
+-- To see the _full_ history with our XT-specific application_time_defaults:
 SELECT *
   FROM Prop_Owner
          FOR ALL SYSTEM_TIME
@@ -111,7 +107,7 @@ SELECT *
 -- "splitting" into two parts, so that the later part could be overridden by the
 -- new value
 
--- We perform a current deletion when we find out that Peter has sold the
+-- (MOD3) We perform a current deletion when we find out that Peter has sold the
 -- property to someone else, with the mortgage handled by another mortgage
 -- company. From the bank's point of view, the property no longer exists as of
 -- (an application time of) now.
@@ -137,7 +133,6 @@ SELECT *
 -- can still time-travel back to January 18 and request the application-time
 -- history, which will state that on that day we thought that Peter still owned
 -- the at.
--- Paste the output of the following query into https://bitemporal-visualizer.github.io/
 SELECT *
   FROM Prop_Owner
          FOR ALL SYSTEM_TIME
@@ -158,7 +153,7 @@ SELECT *
 -- the modication is always a current modification on system time, from now to
 -- until changed.
 
--- A sequenced insertion performed on January 23: Eva actually purchased the flat on January 3.
+-- (MOD4) A sequenced insertion performed on January 23: Eva actually purchased the flat on January 3.
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start, application_time_end)
 VALUES (1, 145, 7797, DATE '1998-01-03', DATE '1998-01-10');
 
@@ -175,22 +170,20 @@ SELECT *
                system_time_start,
                system_time_end);
 
-/*
-This insertion is termed a retroactive modification, as the period of
-applicability is before the modification date Sequenced (and nonsequenced)
-modifications can also be postactive, an example being a promotion that will
-occur in the future (in application time).
+-- This insertion is termed a retroactive modification, as the period of
+-- applicability is before the modification date Sequenced (and nonsequenced)
+-- modifications can also be postactive, an example being a promotion that will
+-- occur in the future (in application time).
 
-(An application-end time of "forever" is generally not considered a postactive
-modification; only the application-start time is considered.)
+-- (An application-end time of "forever" is generally not considered a postactive
+-- modification; only the application-start time is considered.)
 
-A sequenced modification might even be simultaneously retroactive, postactive,
-and current, when its period of applicability starts in the past and extends
-into the future (e.g., a fixed-term assignment that started in the past and ends
-at a designated date in the future)
-*/
+-- A sequenced modification might even be simultaneously retroactive,
+-- postactive, and current, when its period of applicability starts in the past
+-- and extends into the future (e.g., a fixed-term assignment that started in
+-- the past and ends at a designated date in the future)
 
--- We learn now 26 that Eva bought the flat not on January 10, as initially
+-- (MOD5) We learn now 26 that Eva bought the flat not on January 10, as initially
 -- thought, nor on January 3, as later corrected, but on January 5. This
 -- requires a sequenced version of the following deletion:
 DELETE
@@ -212,7 +205,8 @@ SELECT *
                system_time_end);
 
 -- Updates
--- We next learn that Peter bought the flat on January 12, not January 15 as
+
+-- (MOD6) We next learn that Peter bought the flat on January 12, not January 15 as
 -- previously thought. This requires a sequenced version of the following
 -- update. This update requires a period of applicability of January 12 through
 -- 15, setting the customer number to 145. Effectively, the ownership must be
@@ -241,13 +235,15 @@ SELECT *
 -- [10.2.3] Nonsequenced Modifications
 -- We saw before that no mapping was required for nonsequenced modifications on
 -- application-time state tables; such statements treat the (application)
--- timestamps identically to the other columns. As an example, consider the
--- modification "Delete all records with a application-time duration of exactly
--- one week." This modifcation is clearly (application-time) nonsequenced:
--- (1) it depends heavily on the representation, ooking for rows with a
--- particular kind of application timestamp,
--- (2) it does not apply on a per instant basis, and
--- (3) it mentions "records", that is, the recorded information, rather than
+-- timestamps identically to the other columns.
+
+-- As an example, consider the modification "Delete all records with a
+-- application-time duration of exactly one week." This modifcation is clearly
+-- (application-time) nonsequenced:
+--  - it depends heavily on the representation, ooking for rows with a
+--    particular kind of application timestamp,
+--  - it does not apply on a per instant basis, and
+--  - it mentions "records", that is, the recorded information, rather than
 -- "reality".
 
 -- Firstly let's identify the record(s):
@@ -263,9 +259,10 @@ SELECT *
                system_time_end)
  WHERE (x.application_time_end - x.application_time_start) = (DATE '1970-01-08' - DATE '1970-01-01');
 
--- TODO should we be able to use `7 DAY` here? It doesn't work for me (bug?)
+-- NOTE: ideally we would use `7 DAY` here but that doesn't work currently,
+-- blocked by https://github.com/xtdb/core2/issues/430
 
--- Now we can delete:
+-- (MOD7) Now we can delete:
 DELETE
 FROM Prop_Owner
 FOR ALL APPLICATION_TIME AS x
@@ -320,14 +317,14 @@ SELECT DISTINCT x.system_time_start
 -- e.g.
 --        system_time_start
 --  -------------------------------
---  "2022-09-11T15:13:53.846919Z"
---  "2022-09-11T15:14:00.376721Z"
---  "2022-09-11T15:14:06.605243Z"
---  "2022-09-11T15:14:11.991653Z"
---  "2022-09-11T15:14:17.017727Z"
---  "2022-09-11T15:14:42.592297Z"
+--  "2022-09-19T12:42:50.059747Z"
+--  "2022-09-19T12:42:52.778407Z"
+--  "2022-09-19T12:42:55.408391Z"
+--  "2022-09-19T12:42:58.137604Z"
+--  "2022-09-19T12:43:00.465137Z"
+--  "2022-09-19T12:43:03.183066Z"
 
--- These correspond 1:1 with the following entries:
+-- These correspond 1:1 with the following entries in the book:
 --  DATE '1998-01-10'
 --  DATE '1998-01-15'
 --  DATE '1998-01-23'
@@ -335,15 +332,21 @@ SELECT DISTINCT x.system_time_start
 --  DATE '1998-01-28'
 --  DATE '1998-01-30'
 
+-- You may want to paste these values side-by-side in a spreadsheet or other
+-- table format for ease of reference
 
--- Be sure to replace `T` with ` `, remove `Z`, and append `+00:00` when copying
--- the literals for use with TIMESTAMP
--- (TODO https://github.com/xtdb/core2/issues/431)
+-- You will need to interpolate your own system timestamps where the examples
+-- demand values other than those listed (e.g. 14 Jan is ~any time between rows
+-- #1 and #2)
+
+-- NOTE: double-quotes are not supported for values in ISO SQL, therefore Be
+-- sure to replace the JSON double-quotes with single quotes when copying the
+-- literals for use with TIMESTAMP
 
 -- Give the history of owners of the flat at Skovvej 30 in Aalborg as of before our session began:
 SELECT *
   FROM Prop_Owner
-         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:13:52+00:00'
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-19T12:42:50.059747Z'
          FOR ALL APPLICATION_TIME
          AS x (customer_number, application_time_start, application_time_end);
 
@@ -354,7 +357,7 @@ SELECT *
 -- i.e. use a TIMESTAMP between the 1st and 2nd entries (do this similarly again hereafter)
 SELECT *
   FROM Prop_Owner
-         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:13:54+00:00'
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-19T12:42:51Z'
          FOR ALL APPLICATION_TIME
          AS x (customer_number, application_time_start, application_time_end);
 
@@ -367,7 +370,7 @@ SELECT *
 -- The time-slice as of January 18 tells a different story:
 SELECT *
   FROM Prop_Owner
-         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-19T12:42:53Z'
          FOR ALL APPLICATION_TIME
          AS x (customer_number, application_time_start, application_time_end);
 
@@ -380,7 +383,7 @@ SELECT *
 -- Continuing, we take a system time-slice as of January 29:
 SELECT *
   FROM Prop_Owner
-         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-19T12:43:01Z'
          FOR ALL APPLICATION_TIME
          AS x (customer_number, application_time_start, application_time_end);
 
@@ -434,7 +437,7 @@ SELECT *
 -- in the Prop Owner table on January 18.
 SELECT *
   FROM Prop_Owner
-         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-11 15:14:01+00:00'
+         FOR SYSTEM_TIME AS OF TIMESTAMP '2022-09-19T12:42:53Z'
          FOR APPLICATION_TIME AS OF DATE '1998-01-13'
          AS x (customer_number, system_time_start, system_time_end);
 
@@ -452,10 +455,9 @@ SELECT *
 -- To illustrate, we will take a nontemporal query and provide all the
 -- variations of that query.
 
--- Before doing that, we add one more row to the Prop Owner table.
+-- (MOD8) Before doing that, we add one more row to the Prop Owner table.
 -- Peter Olsen bought another flat, at Bygaden 4 in Aalborg on January 15, 1998;
 -- this was recorded on January 31, 1998.
-
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
 VALUES (2, 827, 3621, DATE '1998-01-15');
 
@@ -516,17 +518,9 @@ WHERE P1.property_number = 7797
 -- What properties are or were owned by the customer who owned at the same time
 -- property 7797, as best known?
 
--- NOTE: LEAST/GREATEST are not ISO-approved, and not currently implemented
-
 SELECT P2.property_number,
-       CASE
-           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
-           ELSE P1.application_time_start
-       END AS VT_Begin,
-       CASE
-           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
-           ELSE P2.application_time_end
-       END AS VT_End
+       GREATEST(P1.application_time_start, P2.application_time_start) AS VT_Begin,
+       LEAST(P1.application_time_end, P2.application_time_end) AS VT_End
 FROM Prop_Owner
 FOR ALL APPLICATION_TIME AS P1,
         Prop_Owner
@@ -558,14 +552,8 @@ SELECT P2.property_number
 -- 7797?
 
 SELECT P2.property_number,
-       CASE
-           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
-           ELSE P1.system_time_start
-       END AS Recorded_Start,
-       CASE
-           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
-           ELSE P2.system_time_end
-       END AS Recorded_Stop
+       GREATEST(P1.system_time_start, P2.system_time_start) AS Recorded_Start,
+       LEAST(P1.system_time_end, P2.system_time_end) AS Recorded_Stop
 FROM Prop_Owner FOR ALL SYSTEM_TIME AS P1,
      Prop_Owner FOR ALL SYSTEM_TIME AS P2
 WHERE P1.property_number = 7797
@@ -582,22 +570,10 @@ WHERE P1.property_number = 7797
 -- who owned at the same time property 7797?
 
 SELECT P2.property_number,
-       CASE
-           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
-           ELSE P1.application_time_start
-       END AS VT_Start,
-       CASE
-           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
-           ELSE P2.application_time_end
-       END AS VT_End,
-       CASE
-           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
-           ELSE P1.system_time_start
-       END AS Recorded_Start,
-       CASE
-           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
-           ELSE P2.system_time_end
-       END AS Recorded_Stop
+       GREATEST(P1.application_time_start, P2.application_time_start) AS VT_Begin,
+       LEAST(P1.application_time_end, P2.application_time_end) AS VT_End,
+       GREATEST(P1.system_time_start, P2.system_time_start) AS Recorded_Start,
+       LEAST(P1.system_time_end, P2.system_time_end) AS Recorded_Stop
 FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
      Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P2
 WHERE P1.property_number = 7797
@@ -618,14 +594,8 @@ WHERE P1.property_number = 7797
 -- who owned at any time property 7797?
 
 SELECT P2.property_number,
-       CASE
-           WHEN P1.system_time_start < P2.system_time_start THEN P2.system_time_start
-           ELSE P1.system_time_start
-       END AS Recorded_Start,
-       CASE
-           WHEN P1.system_time_end < P2.system_time_end THEN P1.system_time_end
-           ELSE P2.system_time_end
-       END AS Recorded_Stop
+       GREATEST(P1.system_time_start, P2.system_time_start) AS Recorded_Start,
+       LEAST(P1.system_time_end, P2.system_time_end) AS Recorded_Stop
 FROM Prop_Owner
 FOR ALL SYSTEM_TIME
 FOR ALL APPLICATION_TIME AS P1,
@@ -663,14 +633,8 @@ WHERE P1.property_number = 7797
 -- owned at the same time property 7797?
 
 SELECT P2.property_number,
-       CASE
-           WHEN P1.application_time_start < P2.application_time_start THEN P2.application_time_start
-           ELSE P1.application_time_start
-       END AS VT_Begin,
-       CASE
-           WHEN P1.application_time_end < P2.application_time_end THEN P1.application_time_end
-           ELSE P2.application_time_end
-       END AS VT_End,
+       GREATEST(P1.application_time_start, P2.application_time_start) AS VT_Begin,
+       LEAST(P1.application_time_end, P2.application_time_end) AS VT_End,
        P2.system_time_start AS Recorded_Start
 FROM Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P1,
      Prop_Owner FOR ALL SYSTEM_TIME FOR ALL APPLICATION_TIME AS P2
@@ -724,12 +688,13 @@ SELECT P2.property_number, P2.system_time_start AS Recorded_Start
 -- time and system time, identifying, for example, retroactive changes
 -- e.g. List all retroactive changes made to the Prop Owner table
 
-/*
-  Bonus exercises for the reader:
 
-  1) Insert more data into Prop_Owner to cause entries to appear in results
-  tables where previously there were no results.
 
-  2) Invent your own example for one of the 9 types of bitemporal queries (pick
-  one that interests you!)
-*/
+
+-- Bonus exercises for the reader:
+
+-- 1) Insert more data into Prop_Owner to cause entries to appear in results
+-- tables where previously there were no results.
+
+-- 2) Invent your own example for one of the 9 types of bitemporal queries (pick
+-- one that interests you!)
