@@ -1,1 +1,0 @@
--- Based on https://people.cs.aau.dk/~csj/Thesis/pdf/chapter9.pdf

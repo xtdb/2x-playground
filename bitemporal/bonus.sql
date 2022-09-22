@@ -1,0 +1,4 @@
+-- Try adapting some of the following tutorials (PRs are welcome too :))
+-- https://www.zora.uzh.ch/id/eprint/153529/1/tdb_tutorial.pdf
+-- https://people.cs.aau.dk/~csj/Thesis/pdf/chapter9.pdf
+-- https://people.cs.aau.dk/~csj/Thesis/pdf/chapter10.pdf

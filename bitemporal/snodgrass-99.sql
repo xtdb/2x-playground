@@ -696,5 +696,7 @@ SELECT P2.property_number, P2.system_time_start AS Recorded_Start
 -- 1) Insert more data into Prop_Owner to cause entries to appear in results
 -- tables where previously there were no results.
 
--- 2) Invent your own example for one of the 9 types of bitemporal queries (pick
+-- 2) Try out all of the period predicates to see how they behave
+
+-- 3) Invent your own example for one of the 9 types of bitemporal queries (pick
 -- one that interests you!)
