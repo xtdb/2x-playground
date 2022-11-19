@@ -5,11 +5,18 @@
                    "-Dio.netty.tryReflectionSetAccessible=true"]}}
 
  :deps
- {com.xtdb.labs/core2-core
+ {#_com.xtdb.labs/core2-core
+  #_{:git/url "ssh://git@github.com/xtdb/core2"
+   ;; update this to the latest SHA:
+   :git/sha "6c0771334cf8d0a69af7758c3f1fe7796fe27002"
+   :deps/root "core"}
+
+
+  com.xtdb.labs/core2-pgwire
   {:git/url "ssh://git@github.com/xtdb/core2"
    ;; update this to the latest SHA:
-   :git/sha "cf32cc4eb7202d8ee6ae1ba45cccaafc3b48c2cf"
-   :deps/root "core"}
+   :git/sha "6c0771334cf8d0a69af7758c3f1fe7796fe27002"
+   :deps/root "pgwire-server"}
 
   ;; TODO: users shouldn't have to specify this manually
   com.widdindustries/time-literals {:mvn/version "0.1.6"}

@@ -11,4 +11,4 @@ Add the following to your `~/.clojure/deps.edn`:
 
 Run `clojure -X:deps prep :force true` to install deps.
 
-Run `clj -M:nREPL -m nrepl.cmdline` and connect from your editor.
+Run `clj -J--add-opens=java.base/java.nio=ALL-UNNAMED -M:nREPL -m nrepl.cmdline` and connect from your editor.
