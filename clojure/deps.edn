@@ -1,8 +1,16 @@
 {:aliases
- {:run {:exec-fn xtexample/run
+ {:run {:exec-fn notebook/run
         ;; needed on JDK16+ to allow Netty/Arrow access DirectBuffer internals:
         :jvm-opts ["--add-opens=java.base/java.nio=ALL-UNNAMED"
-                   "-Dio.netty.tryReflectionSetAccessible=true"]}}
+                   "-Dio.netty.tryReflectionSetAccessible=true"]}
+  :nextjournal/clerk
+  {:exec-fn nextjournal.clerk/build!
+   :exec-args {:paths ["src/notebook.clj"]}
+   ;; TODO: add all notebooks you want to have built ☝️
+   ;; if you just want to build one notebook, set `:index`
+
+   ;; optional list of aliases to include in the build
+   :nextjournal.clerk/aliases [:run]}}
 
  :deps
  {#_com.xtdb.labs/core2-core
@@ -21,6 +29,8 @@
   ;; TODO: users shouldn't have to specify this manually
   com.widdindustries/time-literals {:mvn/version "0.1.6"}
 
+  clj-test-containers/clj-test-containers {:mvn/version "0.7.4"}
+
   ;;org.clojure/java.data {:mvn/version "1.0.95"}
   pro.juxt.clojars-mirrors.com.github.seancorfield/next.jdbc {:mvn/version "1.2.674"}
   org.postgresql/postgresql {:mvn/version "42.2.18" #_#_ :scope "provided"}
@@ -28,6 +38,8 @@
 
   metosin/jsonista {:mvn/version "0.3.6"}
   com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
+
+  io.github.nextjournal/clerk {:mvn/version "0.11.603"}
 
   ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
 

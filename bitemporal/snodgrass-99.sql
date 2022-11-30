@@ -80,7 +80,7 @@ SELECT *
 INSERT INTO Prop_Owner (id, customer_number, property_number, application_time_start)
 VALUES (1, 827, 7797, DATE '1998-01-15');
 
--- Observe the change in as-of 'now'
+-- Observe the change in ownership as-of 'now'
 SELECT *
   FROM Prop_Owner AS x (id,
                         customer_number,
