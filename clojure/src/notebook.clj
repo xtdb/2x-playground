@@ -313,9 +313,9 @@
     :from :my-table
     :where [:= :my-table.val 456]})
 
-;; ### Temporary HoneySQL boilerplate
+;; ### Temporary `next.jdbc` boilerplate
 
-;; HoneySQL also offers higher-level functions for inserting and retrieving data. To cope with Core2's current limitations however we will use a slightly modified version of HoneySQL's `insert!` which sidesteps parameter typing issues (and similarly when attempting to use `:insert-into`).
+;; `next.jdbc` also offers higher-level functions for inserting and retrieving data. To cope with Core2's current limitations however we will use a slightly modified version of HoneySQL's `insert!` which sidesteps parameter typing issues (and similarly when attempting to use `:insert-into`).
 
 ^{:nextjournal.clerk/visibility {:code :fold :result :hide}}
 (do
@@ -674,7 +674,6 @@ FROM DATE '1998-01-03' TO DATE '1998-01-05'"]))
 
   (sql/format {:select [:foo.name :bar.also_name]
                :from [[[:raw "foo FOR ALL APPLICATION_TIME"] :x] :bar]
-               :for-system-time-as-of [:inline 123]
                :join-by [:left [[:baz]
                                 [:using :id]]]
                :where [:overlaps :foo.APP_TIME :bar.APP_TIME]
