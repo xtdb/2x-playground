@@ -1,0 +1,20 @@
+;; Start with: clj -M:xtdb
+{:mvn/repos {"ossrh-snapshots" {:url "https://s01.oss.sonatype.org/content/repositories/snapshots"}}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        com.xtdb.labs/xtdb-api {:mvn/version "2.0.0-SNAPSHOT"}
+        com.xtdb.labs/xtdb-core {:mvn/version "2.0.0-SNAPSHOT"}
+        com.xtdb.labs/xtdb-http-server {:mvn/version "2.0.0-SNAPSHOT"}
+        com.xtdb.labs/xtdb-pgwire-server {:mvn/version "2.0.0-SNAPSHOT"}
+        com.xtdb.labs/xtdb-http-client-clj {:mvn/version "2.0.0-SNAPSHOT"}
+
+        ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
+        ch.qos.logback/logback-core {:mvn/version "1.2.3"}
+        org.slf4j/slf4j-api {:mvn/version "1.7.30"}}
+
+ :aliases
+ {:xtdb {:main-opts ["-m" "nrepl.cmdline" "-p" "39639"]
+         :extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}}
+         :jvm-opts
+         ;; needed on JDK16+
+         ["--add-opens=java.base/java.nio=ALL-UNNAMED"
+          "-Dio.netty.tryReflectionSetAccessible=true"]}}}
