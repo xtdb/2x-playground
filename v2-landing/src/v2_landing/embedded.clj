@@ -21,8 +21,26 @@
 ;; XTDB has always handled ~arbitrary data well - just put your maps in!
 (xt/submit-tx xt-node [[:put :people {:xt/id 5678
                                       :name "Sarah"
-                                      :friends [{:user "Dan"}
+                                      :age 40
+                                      #_:friends #_[{:user "Dan"}
                                                 {:user "Kath"}]}]])
+
+(xt/submit-tx xt-node [[:put-fn :increment
+                        '(fn [age]
+                           [[:put :people {:xt/id 9999 :name current-tx :age age}]])]])
+
+
+
+(xt/submit-tx xt-node [[:call :increment 42]])
+
+(xt/q xt-node '{:find [person]
+                :where [($ :people [{:xt/* person}])]})
+
+(xt/q xt-node '{:find [event]
+                :where [($ :tx/events [{:xt/* event}])]})
+
+(xt/q xt-node '{:find [event]
+                :where [($ :errors [{:xt/* event}])]})
 
 ;; XTDBv2 Datalog supports first-class nested lookups too:
 (xt/q xt-node '{:find [dan-name]
