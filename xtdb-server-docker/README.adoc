@@ -4,8 +4,8 @@ You can start an XTDB Docker container with the following:
 
 [source,sh]
 ----
-docker pull xtdb/core2
-docker run -p 5432:5432 xtdb/core2
+docker pull ghcr.io/xtdb/xtdb-ea
+docker run -ti --rm -p 5432:5432 -p 9832:9832 -p 3000:3000 ghcr.io/xtdb/xtdb-ea:latest
 ----
 
 After you see `| PGWire server started on port:  5432` you can start querying XTDB
