@@ -1,4 +1,4 @@
-= Core2 Playground: Clojure
+= v2 Playground for Clojure
 
 Add the following to your `~/.clojure/deps.edn`:
 

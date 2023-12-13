@@ -5,7 +5,7 @@
                    "-Dio.netty.tryReflectionSetAccessible=true"]}
   :nextjournal/clerk
   {:exec-fn nextjournal.clerk/build!
-   :exec-args {:paths ["src/notebook.clj"]}
+   :exec-args {:paths ["src/learn-xtql-today-with-clojure.clj"]}
    ;; TODO: add all notebooks you want to have built ☝️
    ;; if you just want to build one notebook, set `:index`
 
@@ -13,37 +13,36 @@
    :nextjournal.clerk/aliases [:run]}}
 
  :deps
- {#_com.xtdb.labs/core2-core
-  #_{:git/url "ssh://git@github.com/xtdb/core2"
-   ;; update this to the latest SHA:
-   :git/sha "6c0771334cf8d0a69af7758c3f1fe7796fe27002"
-   :deps/root "core"}
+ {;; for testing only - run XTDB as a server for production(!)
+  com.xtdb.labs/xtdb-core {:mvn/version "dev-SNAPSHOT"}
+  com.xtdb.labs/xtdb-http-server {:mvn/version "dev-SNAPSHOT"}
+  com.xtdb.labs/xtdb-pgwire-server {:mvn/version "dev-SNAPSHOT"}
 
-
-  com.xtdb.labs/core2-pgwire
-  {:git/url "ssh://git@github.com/xtdb/core2"
-   ;; update this to the latest SHA:
-   :git/sha "6c0771334cf8d0a69af7758c3f1fe7796fe27002"
-   :deps/root "pgwire-server"}
-
-  ;; TODO: users shouldn't have to specify this manually
-  com.widdindustries/time-literals {:mvn/version "0.1.6"}
+  ;; XTDB API and http client
+  com.xtdb.labs/xtdb-api {:mvn/version "dev-SNAPSHOT"}
+  com.xtdb.labs/xtdb-http-client-clj {:mvn/version "dev-SNAPSHOT"}
 
   clj-test-containers/clj-test-containers {:mvn/version "0.7.4"}
 
-  ;;org.clojure/java.data {:mvn/version "1.0.95"}
-  pro.juxt.clojars-mirrors.com.github.seancorfield/next.jdbc {:mvn/version "1.2.674"}
+  com.github.seancorfield/next.jdbc {:mvn/version "1.3.894"}
   org.postgresql/postgresql {:mvn/version "42.2.18" #_#_ :scope "provided"}
   ;;com.zaxxer/HikariCP {:mvn/version "4.0.3"}
 
   metosin/jsonista {:mvn/version "0.3.6"}
-  com.github.seancorfield/honeysql {:mvn/version "2.2.891"}
+  com.github.seancorfield/honeysql {:mvn/version "2.5.1091"}
 
-  io.github.nextjournal/clerk {:mvn/version "0.11.603"}
+  io.github.nextjournal/clerk {:mvn/version "0.15.957"}
 
   ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
 
   djblue/portal {:mvn/version "0.29.1"}
 
+  tatut/ripley {:git/url "https://github.com/tatut/ripley.git"
+                :sha "b6963c1aef51b9d30a6a87da1317e79b01ea4065"}
+  garden/garden {:mvn/version "1.3.10"}
+  compojure/compojure {:mvn/version "1.6.1"}
+  http-kit/http-kit {:mvn/version "2.5.3"}
+
   }
- :mvn/repos { "clojars" {:url "https://repo.clojars.org/"}}}
+ :mvn/repos {"clojars" {:url "https://repo.clojars.org/"}
+             "sonatype snapshots" {:url "https://s01.oss.sonatype.org/content/repositories/snapshots"}}}

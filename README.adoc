@@ -1,6 +1,6 @@
-= core2-playground
+= 2x-playground
 
-This repository provides a wide range of examples which allow you to experiment with the XTDB Core2 UX.
+This repository provides a wide range of examples which allow you to experiment with the XTDB's UX.
 
 ----
 .
@@ -23,8 +23,8 @@ This repository provides a wide range of examples which allow you to experiment 
 
 [source,sh]
 ----
-docker pull xtdb/core2
-docker run -p 5432:5432 xtdb/core2
+docker pull ghcr.io/xtdb/xtdb-ea
+docker run -ti --rm -p 5432:5432 -p 9832:9832 -p 3000:3000 ghcr.io/xtdb/xtdb-ea:latest
 ----
 
 === Option 2: JAR
@@ -41,7 +41,7 @@ TODO
 
 The SQL dialect available in XTDB tries very hard to adhere to the SQL Specification.
 There are small deviations from the spec where absolutely required.
-Read more in https://github.com/xtdb/core2-playground/blob/main/SQL.adoc[`SQL.adoc`].
+Read more in https://github.com/xtdb/2x-playground/blob/main/SQL.adoc[`SQL.adoc`].
 
 
 == psql
@@ -72,9 +72,9 @@ brew install postgresql
 
 == Clojure
 
-The Clojure examples consume Core2 directly, running a client and server in the same process for convenience.
-This means you do not need to start an external Core2 server.
+The Clojure examples consume XTDB directly, running a client and server in the same process for convenience.
+This means you do not need to start an external XTDB server.
 (Though you still can, of course.)
-The client code still speaks to Core2 over the `pgwire` protocol using JDBC.
+The client code still speaks to XTDB over the `pgwire` protocol using JDBC.
 
 `./clojure/README.adoc`
