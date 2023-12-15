@@ -186,12 +186,16 @@
     :person/born #inst "1936-04-12T00:00:00.000-00:00",
     :person/death #inst "2011-10-05T00:00:00.000-00:00",
     :xt/id 131}
-   {:person/name "Peter MacDonald", :xt/id 132}
+   {:person/name "Peter MacDonald",
+    :person/born #inst "1939-02-20T00:00:00.000-00:00"
+    :xt/id 132}
    {:person/name "Marc de Jonge",
     :person/born #inst "1949-02-16T00:00:00.000-00:00",
     :person/death #inst "1996-06-06T00:00:00.000-00:00",
     :xt/id 133}
-   {:person/name "Stephen Hopkins", :xt/id 134}
+   {:person/name "Stephen Hopkins",
+    :person/born #inst "1958-11-01T00:00:00.000-00:00"
+    :xt/id 134}
    {:person/name "Ruben Blades",
     :person/born #inst "1948-07-16T00:00:00.000-00:00",
     :xt/id 135}
@@ -210,14 +214,18 @@
    {:person/name "Veronica Cartwright",
     :person/born #inst "1949-04-20T00:00:00.000-00:00",
     :xt/id 140}
-   {:person/name "Carrie Henn", :xt/id 141}
+   {:person/name "Carrie Henn",
+    :person/born #inst "1976-05-07T00:00:00.000-00:00"
+    :xt/id 141}
    {:person/name "George Miller",
     :person/born #inst "1945-03-03T00:00:00.000-00:00",
     :xt/id 142}
    {:person/name "Steve Bisley",
     :person/born #inst "1951-12-26T00:00:00.000-00:00",
     :xt/id 143}
-   {:person/name "Joanne Samuel", :xt/id 144}
+   {:person/name "Joanne Samuel",
+    :person/born #inst "1957-08-05T00:00:00.000-00:00",
+    :xt/id 144}
    {:person/name "Michael Preston",
     :person/born #inst "1938-05-14T00:00:00.000-00:00",
     :xt/id 145}
@@ -422,7 +430,7 @@
         (where (= person/name "Ridley Scott"))
         (return xt/id)))
 
-;; ## Exercises
+;; ### Exercises
 
 ;; Q1. Find the IDs and titles of movies in the database
 
@@ -437,7 +445,7 @@
 (q '(from :solve-me [xt/id]))
 
 
-;; ## Solutions
+;; ### Solutions
 
 ;; A1.
 
@@ -466,7 +474,7 @@
 
 ;; Logic variables can be re-used and referenced as much as required within a unify scope, across many clauses. Think of unify as similar to simultaneous equations in mathematics.
 
-;; ## Exercises
+;; ### Exercises
 
 ;; Q1. Find movie titles made in 1985
 
@@ -484,7 +492,7 @@
 
 (q '(from :solve-me [xt/id]))
 
-;; ## Solutions
+;; ### Solutions
 
 ;; A1.
 
@@ -573,7 +581,7 @@
                            {:movie-title "Lethal Weapon" :box-office-earnings 120207127}
                            {:movie-title "Commando" :box-office-earnings 57491000}]}})
 
-;; ## Exercises
+;; ### Exercises
 
 ;; Q1. Find movie title by year
 
@@ -598,7 +606,7 @@
            :title-rating-rel [{:title "Die Hard"
                                :rating 8.3}]}})
 
-;; ## Solutions
+;; ### Solutions
 
 ;; A1.
 
@@ -654,6 +662,102 @@
                               {:title "Lethal Weapon 3", :rating 6.6}
                               {:title "RoboCop", :rating 7.5}]}})
 
+;; ## Expressions
+
+;; So far, we have only been dealing with joining of data across relations and unnested columns using basic equality. We have not yet seen how to handle questions like "*Find all movies released before 1984*". This is where **expressions** come into play.
+
+;; Let's start with the query for the question above:
+
+(q '(-> (from :movies [movie/title movie/year])
+        (where (< movie/year 1984))))
+
+;; Like all other functions and expressions in XTQL, this use of `<` reflects the standard SQL definition and behaviours (in SQL `<` is often referred to as a comparison operator"). This is particular important to keep in mind when creating such expressions that work across multiple types (e.g. comparing different numeric values).
+
+;; You can use [any supported SQL function](https://docs.xtdb.com/reference/main/stdlib.html) from the XTDB standard library:
+
+(q '(-> (from :persons [person/name])
+        (where (like person/name "M%"))))
+
+;; Note: if there are functions you need that we have implemented yet, please ask or feel free to open an issue. XTDB does not currently support any extension point for user-defined functions.
+
+;; ### Exercises
+
+;; Q1. Find movies older than a certain year (inclusive)
+
+(q '(from :solve-me [xt/id])
+   {:args {:year 1979}})
+
+;; Q2. Find actors older than Danny Glover
+
+(q '(from :solve-me [xt/id]))
+
+;; Q3. Find movies newer than `year` (inclusive) and has a `rating` higher than the one supplied
+
+(q '(from :solve-me [xt/id])
+   {:args {:year 1990
+           :rating 8.0
+           :title-rating-rel [{:title "Braveheart", :rating 8.4}
+                              {:title "Predator 2", :rating 6.1}]}})
+
+;; ### Solutions
+
+;; A1.
+
+(q '(-> (from :movies [movie/title movie/year])
+        (where (<= movie/year $year))
+        (return movie/title))
+   {:args {:year 1979}})
+
+;; A2.
+
+(q '(-> (unify (from :persons [{:person/name "Danny Glover"} {:person/born b1}])
+               (from :persons [xt/id person/name {:person/born b2}])
+               (where (< b2 b1))
+               (from :movies [movie/cast])
+               (unnest {xt/id movie/cast}))
+        (return person/name)))
+
+;; A3.
+
+(q '(-> (unify (rel $title-rating-rel [{:rating r} title])
+               (from :movies [{:movie/title title} movie/year])
+               (where (<= $year movie/year)
+                      (< $rating r)))
+        (return title))
+   {:args {:year 1990
+           :rating 8.0
+           :title-rating-rel [{:title "Die Hard", :rating 8.3}
+                              {:title "Alien", :rating 8.5}
+                              {:title "Lethal Weapon", :rating 7.6}
+                              {:title "Commando", :rating 6.5}
+                              {:title "Mad Max Beyond Thunderdome", :rating 6.1}
+                              {:title "Mad Max 2", :rating 7.6}
+                              {:title "Rambo: First Blood Part II", :rating 6.2}
+                              {:title "Braveheart", :rating 8.4}
+                              {:title "Terminator 2: Judgment Day", :rating 8.6}
+                              {:title "Predator 2", :rating 6.1}
+                              {:title "First Blood", :rating 7.6}
+                              {:title "Aliens", :rating 8.5}
+                              {:title "Terminator 3: Rise of the Machines", :rating 6.4}
+                              {:title "Rambo III", :rating 5.4}
+                              {:title "Mad Max", :rating 7.0}
+                              {:title "The Terminator", :rating 8.1}
+                              {:title "Lethal Weapon 2", :rating 7.1}
+                              {:title "Predator", :rating 7.8}
+                              {:title "Lethal Weapon 3", :rating 6.6}
+                              {:title "RoboCop", :rating 7.5}]}})
+
+;; ## Generating columns
+
+;; In addition to defining constraints, expressions can be used to transform data and return it via adding columns using the [`with`](https://docs.xtdb.com/reference/main/xtql/queries.html#_with) operator - either new columns for the next operator in a pipeline, or as additional columns within the `unify` scope.
+
+;; For example, given a person's birthday, it's easy to calculate the (very approximate) age of a person:
+
+(q '(-> (from :persons [{:person/name $name} person/born])
+        (with {:age (extract "YEAR" (+ #inst "0000" (- (current-date) person/born)))}))
+   {:args {:name "Tina Turner"}})
+
+;; ## To Be Continued...
 
 ;; ## Conclusion
 
@@ -677,10 +781,12 @@
 
 ;; ## Static Build
 
-;; 1. Clear the cache (clerk/clear-cache!) (or `rm .clerk/cache/*` / delete the `.clerk` directory)
-;; 2. `clj -J--add-opens=java.base/java.nio=ALL-UNNAMED -X:nextjournal/clerk` (and be sure to not save this namespace in parallel / trigger cache changes)
-;; 3. Browse at `public/build/src/notebook.html`
-
-;; Hopefully this can be published on https://github.clerk.garden/ soon!
+;; If you an active REPL, run the following
 
 (comment (clerk/build! {:paths ["src/learn-xtql-today-with-clojure.clj"]}))
+
+;; Or otherwise:
+
+;; 1. Clear the cache (clerk/clear-cache!) (or `rm .clerk/cache/*` / delete the `.clerk` directory)
+;; 2. `clj -J--add-opens=java.base/java.nio=ALL-UNNAMED -X:nextjournal/clerk` (and be sure to not save this namespace in parallel / trigger cache changes)
+;; 3. Browse the HTML file(s) created under `public/build/`
