@@ -1,10 +1,12 @@
 ;; # Learn XTQL Today, with Clojure
 
-;; Welcome! This is a [Clerk](https://github.com/nextjournal/clerk) "notebook" written for [Clojure](https://clojure.org) users as a showcase of XTDB's developer-friendly query language: XTQL.
+;; Welcome! This is a [Clerk](https://github.com/nextjournal/clerk) "notebook" written for [Clojure](https://clojure.org) users as a showcase of XTDB's developer-friendly, data-oriented query language: XTQL.
 
-;; XTQL is designed to be language agnostic and supports a first-class JSON representation for use with a wide variety of client libraries (coming soon!). However, for this tutorial we are focused on the Clojure client library experience.
+;; XTDB is a bitemporal database with a SQL API that automatically stores the `system_time` and `valid_time` histories of all data without any configuration or explicit schema design. This notebook does not explore XTDB's SQL or time-travel capabilities, although the [`:xt$system-time`](https://docs.xtdb.com/intro/data-model.html#_temporal_columns) and [`:xt$valid-time`](https://docs.xtdb.com/intro/data-model.html#_temporal_columns) columns may be easily examined.
 
-;; Learn XTQL Today is derived from the classic [learndatalogtoday.org](http://learndatalogtoday.org) tutorial. This interactive tutorial designed to teach you XTQL. XTQL is a declarative database query language with roots in logic programming and SQL. XTQL has equivalent expressive power to SQL and relies on the SQL standard library to ensure full interoperability between the two languages.
+;; XTQL is designed to be language agnostic and supports a first-class JSON representation for use with a wide variety of language SDKs (coming soon!). However, for this tutorial we are focused on the Clojure SDK experience.
+
+;; Learn XTQL Today is derived from the classic [learndatalogtoday.org](http://learndatalogtoday.org) tutorial. This interactive tutorial designed to teach you XTQL. XTQL is a declarative database query language with roots in logic programming and SQL. XTQL has equivalent expressive power to SQL and relies on the SQL standard library to ensure full interoperability between the two languages. Feel free to try constructing and running equivalent SQL queries as you learn XTQL!
 
 ;; The JSON version of XTQL is essentially a more verbose translation of the [edn](https://github.com/edn-format/edn)-based representation seen below.
 
@@ -357,7 +359,7 @@
     :movie/cast [112 149],
     :xt/id 219}])
 
-;; Note: XTDB also has a JSON-over-HTTP API that naturally supports JSON documents using JSON-LD for an extended range of types.
+;; NOTE: XTDB also has a JSON-over-HTTP API that naturally supports JSON documents using JSON-LD for an extended range of types.
 
 ;; The following code maps over both sets of docs to generate a single transaction containing one `put` operation per document, whilst also specifying the relevant table, and then submits the transaction.
 
@@ -367,7 +369,7 @@
                        (for [doc my-movies]
                          (xt/put :movies doc))))
 
-;; Note: loading the small amount of data we defined above can be comfortably done in a single transaction. In practice you will often find throughput benefits to batching `put` operations into groups of 1000 at a time.
+;; NOTE: loading the small amount of data we defined above can be comfortably done in a single transaction. In practice you will often find throughput benefits to batching `put` operations into groups of 1000 at a time.
 
 ;; With XTDB running and the data loaded, you can now execute a query, which is a Clojure list, by passing it to XTDB's `q` API. The meaning of this query will become apparent very soon!
 
@@ -386,7 +388,7 @@
 
 (q "SELECT movies.movie$title FROM movies")
 
-;; Note: Clojure keywords are only used superficially for representing columns (/ document keys) in the Clojure SDK, and internally only the SQL string representation is store. This enables a keyword like `:a.b.c/d` to be natively accessible via SQL as `a$b$c$d` (also meaning `:a.b/c.d` can't be losslessly round-tripped).
+;; NOTE: Clojure keywords are only used superficially for representing columns (/ document keys) in the Clojure SDK, and internally only the SQL string representation is store. This enables a keyword like `:a.b.c/d` to be natively accessible via SQL as `a$b$c$d` (also meaning `:a.b/c.d` can't be losslessly round-tripped).
 
 ;; ## Extensible Data Notation
 
@@ -416,6 +418,8 @@
 ;; XTQL queries consist of composable operators, optionally combined with a pipeline, but this instance we only have [`from`](https://docs.xtdb.com/reference/main/xtql/queries.html#_from) which is a "source" operator that retrieves a relation from a table stored in XTDB.
 
 ;; The first argument it takes is the keyword name of the table to fetch data from, here it is the `:movies` table. The operator then takes a vector specifying which columns to return, in this case just listing the plain symbol `movie/title` which corresponds to the `:movie/title` key within a our document.
+
+;; NOTE: Within the Clojure SDK, columns (document keys) are inserted as keywords (e.g. `:movie/title`) but throughout queries are only accessed/represented via bindings using their corresponding symbols (e.g. `movie/title`). Columns and "logic variables" (which are introduced later in the Unification section) use symbols interchangeably to represent columns.
 
 ;; The example database we're using contains *movies* that mostly, but not exclusively, from the 1980s. You'll find information about movie titles, release year, directors, cast members, etc. As the tutorial advances we'll learn more about the contents of the database and how it's organized.
 
@@ -481,9 +485,46 @@
         (where (= movie/year 1987))
         (return xt/id)))
 
+;; ## Relational Composition
+
+;; XTQL provides the [`rel`](https://docs.xtdb.com/reference/main/xtql/queries.html#_rel) source operator which can be used to construct and manipulate a temporary, in-memory relation. This relation can be use within a pipeline in the exact same way as a stored relation represented using `from`. Similarly, columns can be returned explicitly:
+
+(q '(rel [{:foo "bar" :baz "qux"}] [foo]))
+
+;; ...and we can use a `*` binding to retrieve a nested representation of all columns from the relation:
+
+(q '(rel [{:foo "bar" :baz "qux"}] [*]))
+
+;; NOTE: the use of `*` is rarely appropriate for production queries, but certainly useful while exploring data
+
+;; Let's run a previous query over a subset of the original data (which is _not_ re-submitted to the database):
+
+(q '(-> (rel [{:xt/id 137 :person/name "Ridley Scott"}
+              {:xt/id 118 :person/name "Ronny Cox"}]
+             [xt/id person/name])
+        (where (= person/name "Ridley Scott"))
+        (return xt/id)))
+
+;; This query avoids retrieving any of the stored data altogether and is completely disconnected from the `:persons` table (i.e. the correspondence of `:xt/id` with the stored data is inconsequential).
+
+;; ### Unnest
+
+;; Nested values can be access as regular columns using the [`unnest`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unnest) operator which returns a cross-joined relation.
+
+(q '(-> (rel [{:foo "bar" :my-list [1 2 3]}] [foo my-list])
+        (unnest {:my-item my-list})))
+
+;; Using the [`with`](https://docs.xtdb.com/reference/main/xtql/queries.html#_with) operator, which extends the previous relation with additional columns, specific nested values can be accessed using `.` and `nth` operators.
+
+(q '(-> (rel [{:foo "bar" :my-list [{:bar "baz"}]}] [foo my-list])
+        (with {:my-item (nth my-list 0)})
+        (with {:my-val (. my-item bar)})))
+
 ;; ## Unification
 
-;; Joins in XTQL are most naturally specified using the [`unify`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unify) operator - this combines multiple input relations based on the use of logic variables to represent and connect various columns. This provides a declarative and terse method of specifying join conditions (i.e. how relations should be combined with each other). The elements within a unify scope are called "clauses". The user-provided clause order is inconsequential and therefore it is best to arrange clauses for ease of readability and human comprehension.
+;; Joins in XTQL are most naturally specified using the [`unify`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unify) operator - this combines multiple input relations based on the use of logic variables to represent and connect various columns. Within a `unify` scope all symbols represent logic variables rather than singular columns. However a logic variable may take the name of real column which creates an implicit binding.
+
+;; `unify` provides a declarative and terse method of specifying join conditions (i.e. how relations should be combined with each other). The elements within a unify scope are called "clauses". The user-provided clause order is inconsequential and therefore it is best to arrange clauses for ease of readability and human comprehension.
 
 ;; Let's say we want to find out who starred in "Lethal Weapon". We will need to process two source relations for this, both `:movies` and `:persons`, and to achieve this we can embed two `from` operators within a `unify` (which itself simply returns a relation). However this requires introducing our first user-named logic variable (here we have chosen `p`) and we also need to [`unnest`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unnest) the stored vector of IDs retrieved as `movie/cast`:
 
@@ -492,7 +533,9 @@
                (from :persons [{:xt/id p} person/name]))
         (return person/name)))
 
-;; Logic variables can be re-used and referenced as much as required, across many clauses, within a single unify scope. Think of unify as similar to simultaneous equations in mathematics.
+;; Logic variables can be re-used and referenced as much as required, across many clauses, within a single unify scope. Think of unification as similar to simultaneous equations in mathematics - a logic variable that connects multiple underlying columns forces the database to "solve" the query using whatever joins are necessary.
+
+;; NOTE: An implicit binding will re-use the underlying column name (e.g. `movie/cast` in `from` above) for the logic variable, but you can always use an explicit binding map instead (e.g. `{:movie/cast c}`) if you struggle with the verbosity of the logic variables caused by long underlying column names.
 
 ;; ### Exercises
 
@@ -557,7 +600,7 @@
 
 ;; You can pass any number of input parameters to a query, and these parameters be used for relations as well as the full range of value types.
 
-;; For example, let's say you have the vector `["James Cameron" "Arnold Schwarzenegger"]` and you want to use this as input to find all movies where these two people collaborated. First, outside of XTQL, you would need to reshape the vector into a valid relation (i.e. a vector of maps with named columns) and refer to it via the [`rel`](https://docs.xtdb.com/reference/main/xtql/queries.html#_rel) source operator:
+;; For example, let's say you have the vector `["James Cameron" "Arnold Schwarzenegger"]` and you want to use this as an input parameter to find all movies where these two people collaborated. First, outside of XTQL, you would need to reshape the vector into a valid relation (i.e. a vector of maps with named columns) and refer to it via the [`rel`](https://docs.xtdb.com/reference/main/xtql/queries.html#_rel) source operator:
 
 (q '(-> (unify (rel $director-actor-rel [director actor])
                (from :persons [{:xt/id d} {:person/name director}])
@@ -698,7 +741,7 @@
 (q '(-> (from :persons [person/name])
         (where (like person/name "M%"))))
 
-;; Note: if there are functions you need that we have not implemented yet, please ask or feel free to open an issue. XTDB does not currently support any extension point for user-defined functions (UDFs).
+;; NOTE: if there are functions you need that we have not implemented yet, please ask or feel free to open an issue. XTDB does not currently support any extension point for user-defined functions (UDFs).
 
 ;; ### Exercises
 
