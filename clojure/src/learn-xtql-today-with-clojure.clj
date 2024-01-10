@@ -509,7 +509,7 @@
 
 ;; ### Unnest
 
-;; Nested values can be access as regular columns using the [`unnest`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unnest) operator which returns a cross-joined relation.
+;; Nested values can be accessed as regular columns using the [`unnest`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unnest) operator which returns a cross-joined relation.
 
 (q '(-> (rel [{:foo "bar" :my-list [1 2 3]}] [foo my-list])
         (unnest {:my-item my-list})))
