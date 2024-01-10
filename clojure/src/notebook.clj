@@ -49,7 +49,7 @@
 
 ;; 2. Evaluate the above ns definition in isolation first - do not eval the whole namespace!
 
-;; 3. Once that has ns eval has returned, eval the initializing `do` block inside the first `comment` below (this will take some time) and then open your browser at `http://localhost:7777`.
+;; 3. Once that ns eval has returned, eval the initializing `do` block inside the first `comment` below (this will take some time) and then open your browser at `http://localhost:7777`.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (defn show-raw-value [x]

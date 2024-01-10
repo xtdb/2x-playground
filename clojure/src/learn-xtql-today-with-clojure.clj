@@ -36,7 +36,7 @@
 
 ;; 2. Evaluate the ns definition in isolation first - do not eval the whole namespace!
 
-;; 3. Once that has ns eval has returned successfully, eval the initializing `do` block inside the first `comment` below (this will take some time) and then open your browser at [`https://localhost:7777`](http://localhost:7777)
+;; 3. Once that ns eval has returned successfully, eval the initializing `do` block inside the first `comment` below (this will take some time) and then open your browser at [`https://localhost:7777`](http://localhost:7777)
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (do
@@ -67,7 +67,7 @@
 
 ;; ## Start an in-process, ephemeral XTDB server
 
-;; We will run XTDB as an in-process server which is useful for writing tests and rapid experimentation. However, XTDB is general intended to be run in production as an out-of-process server (like a regular database server/cluster) and therefore use of remote APIs is strongly recommended for the best experience.
+;; We will run XTDB as an in-process server which is useful for writing tests and rapid experimentation. However, XTDB is primarily intended to be run in production as an out-of-process server (like a regular database server/cluster) and therefore use of remote APIs is strongly recommended for the best experience.
 
 ;; For the purposes of this tutorial though we are starting up an ephemeral (i.e. data is not persisted across restarts) XTDB 'node', and by the time you are reading this your node should have already started.
 
@@ -76,13 +76,15 @@
 ^{::clerk/visibility {:result :hide}}
 (def my-node (xt.node/start-node {}))
 
-;; The XTDB instance referred to by `my-node` should now be an active, which we can confirm using `status` which returns `{:latest-completed-tx nil :latest-submitted-tx nil}`
+;; The XTDB instance referred to by `my-node` should by now have started running successfully, which we can confirm by calling the `status` API and seeing `{:latest-completed-tx nil :latest-submitted-tx nil}` in response.
 
 (xt/status my-node)
 
-;; Next we need some data. XTDB interprets maps as both "documents" and "jagged rows" interchangeably. These maps works without a pre-defined schema - they only need a valid ID primary key. In the data below (which is defined using edn, and fully explained in the section) we are using integers as IDs. We are also using nested vector values, meaning the schema is not properly normalized (in the regular SQL sense of "3NF") - but no problem - XTQL can handle this!
+;; Next we need some data. XTDB interprets maps as both "documents" and "jagged rows" interchangeably. These maps can be handled without a predefined schema - they only need a valid ID primary key. In the data below (which is defined using edn, and is fully explained in the next section) we are using integers as IDs. We are also using nested vector values, meaning the schema is not properly normalized (in the regular SQL sense of "3NF") - but no problem - XTQL can handle this!
 
-;; The following two vectors of map contains two kinds of documents: documents relating to people (actors and directors) and documents relating to movies. As a convention to aid human interpretation, all persons have IDs like `1XX` and all movies have IDs like `2XX`. Many ID value types are supported, such as strings and UUIDs, which may be more appropriate in a real application.
+;; Note that using explicit "join tables" (like in SQL), instead of such nested structures, can still be very useful and will typically result in better out-of-the-box performance.
+
+;; The following two vectors contain two kinds of documents respectively: documents relating to people (actors and directors) and documents relating to movies. As a convention to aid human interpretation, all persons have IDs like `1XX` and all movies have IDs like `2XX`. Many ID value types are supported, such as strings and UUIDs, which may be more appropriate in a real application.
 
 ^{::clerk/visibility {:code :fold :result :show}}
 (def my-persons
@@ -367,7 +369,7 @@
 
 ;; Note: loading the small amount of data we defined above can be comfortably done in a single transaction. In practice you will often find throughput benefits to batching `put` operations into groups of 1000 at a time.
 
-;; With XTDB running and the data loaded, you can now execute a query, which is a Clojure map, by passing it to XTDB's `q` API. The meaning of this query will become apparent very soon!
+;; With XTDB running and the data loaded, you can now execute a query, which is a Clojure list, by passing it to XTDB's `q` API. The meaning of this query will become apparent very soon!
 
 (xt/q my-node '(from :movies [movie/title]))
 
@@ -379,6 +381,12 @@
 ;; Queries can then be executed trivially:
 
 (q '(from :movies [movie/title]))
+
+;; You can also use this same `q` API to run SQL queries by passing it a raw string instead of an XTQL data structure.
+
+(q "SELECT movies.movie$title FROM movies")
+
+;; Note: Clojure keywords are only used superficially for representing columns (/ document keys) in the Clojure SDK, and internally only the SQL string representation is store. This enables a keyword like `:a.b.c/d` to be natively accessible via SQL as `a$b$c$d` (also meaning `:a.b/c.d` can't be losslessly round-tripped).
 
 ;; ## Extensible Data Notation
 
@@ -407,11 +415,23 @@
 
 ;; XTQL queries consist of composable operators, optionally combined with a pipeline, but this instance we only have [`from`](https://docs.xtdb.com/reference/main/xtql/queries.html#_from) which is a "source" operator that retrieves a relation from a table stored in XTDB.
 
-;; The first argument it takes is the keyword name of the table to fetch data from, here it is the `:movies` table. The operator then takes a vectors of definitions for which columns to return, in this case just listing the plain symbol `movie/title` which corresponds to the `:movie/title` key within a our document.
+;; The first argument it takes is the keyword name of the table to fetch data from, here it is the `:movies` table. The operator then takes a vector specifying which columns to return, in this case just listing the plain symbol `movie/title` which corresponds to the `:movie/title` key within a our document.
 
-;; The example database we're using contains *movies* mostly, but not exclusively, from the 1980s. You'll find information about movie titles, release year, directors, cast members, etc. As the tutorial advances we'll learn more about the contents of the database and how it's organized.
+;; The example database we're using contains *movies* that mostly, but not exclusively, from the 1980s. You'll find information about movie titles, release year, directors, cast members, etc. As the tutorial advances we'll learn more about the contents of the database and how it's organized.
 
-;; (TODO "The following schema diagram should help to refer to, however")
+;; This schema overview should serve as a helpful reference:
+
+#_:clj-kondo/ignore
+^{::clerk/visibility {:result :hide}}
+(comment
+  +-------------------------+  +---------------------+
+  |         Movie           |  |       Person        |
+  | * :xt/id          INT   |  | * :xt/id        INT |
+  | * :movie/title    STR   |  | * :person/name  STR |
+  | * :movie/director INT   |  | * :person/born  INT |
+  | * :movie/cast     INT[] |  | O :person/death INT |
+  | O :movie/sequel   INT   |  +---------------------+
+  +-------------------------+                         )
 
 ;; If we wish to find the IDs (as in the `:xt/id` primary key) of all people named (via the `:person/name` key) "Ridley Scott" we are able to specify a mapping to a string value within the `from` operator's column definition. This mapping acts as a filter. In this case there is only one match:
 
@@ -422,9 +442,9 @@
 (q '(-> (from :persons [person/name xt/id])
         (where (= person/name "Ridley Scott"))))
 
-;; Since XTQL is subjected to query planning and optimization, these two queries result in an identical execution plan. Or least as far as filtering is concerned.
+;; Since XTQL is subjected to query planning and optimization, these two queries result in equivalent execution plans.
 
-;; If we want to avoid unnecessarily processing and returning the `person/name` column in the output relation (returned under the `:person/name` key in each result maps), we can use a final [`return`](https://docs.xtdb.com/reference/main/xtql/queries.html#_return) operator to restrict the output to a specific set of of columns.
+;; If we want to avoid unnecessarily processing and returning the `person/name` column in the output relation (returned under the `:person/name` key in each result map), we can use a final [`return`](https://docs.xtdb.com/reference/main/xtql/queries.html#_return) operator to restrict the output to a specific set of of columns.
 
 (q '(-> (from :persons [person/name xt/id])
         (where (= person/name "Ridley Scott"))
@@ -463,7 +483,7 @@
 
 ;; ## Unification
 
-;; Joins in XTQL are primarily specified using the [`unify`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unify) operator - this combines multiple input relations based on the use of logic variables to represent and connect various columns. This allows for very declarative yet terse method of specifying join conditions; how relations relate to each other. The elements within a unify scope are called "clauses" and the user-provided order of those clauses superficial, so it's best to arrange them for ease for human comprehension.
+;; Joins in XTQL are most naturally specified using the [`unify`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unify) operator - this combines multiple input relations based on the use of logic variables to represent and connect various columns. This provides a declarative and terse method of specifying join conditions (i.e. how relations should be combined with each other). The elements within a unify scope are called "clauses". The user-provided clause order is inconsequential and therefore it is best to arrange clauses for ease of readability and human comprehension.
 
 ;; Let's say we want to find out who starred in "Lethal Weapon". We will need to process two source relations for this, both `:movies` and `:persons`, and to achieve this we can embed two `from` operators within a `unify` (which itself simply returns a relation). However this requires introducing our first user-named logic variable (here we have chosen `p`) and we also need to [`unnest`](https://docs.xtdb.com/reference/main/xtql/queries.html#_unnest) the stored vector of IDs retrieved as `movie/cast`:
 
@@ -472,7 +492,7 @@
                (from :persons [{:xt/id p} person/name]))
         (return person/name)))
 
-;; Logic variables can be re-used and referenced as much as required within a unify scope, across many clauses. Think of unify as similar to simultaneous equations in mathematics.
+;; Logic variables can be re-used and referenced as much as required, across many clauses, within a single unify scope. Think of unify as similar to simultaneous equations in mathematics.
 
 ;; ### Exercises
 
@@ -527,7 +547,7 @@
                (unnest {sylvester movie/cast}))
         (return movie/title)))
 
-;; It would be great if we could reuse this query to find movie titles for any actor and not just for "Sylvester Stallone". This is possible using parameters, which are supplied as a map under an `:args` key to options map of `xt/q`. Within the query parameters can be referenced using the `$` prefix to a symbol.
+;; It would be great if we could reuse this query to find movie titles for any actor and not just for "Sylvester Stallone". This is possible using parameters, which are supplied as a map under an `:args` key to options map of `xt/q`. Within queries, parameters can be referenced using the `$` prefix to a symbol.
 
 (q '(-> (unify (from :persons [{:xt/id p} {:person/name $name}])
                (from :movies [movie/cast movie/title])
@@ -537,7 +557,7 @@
 
 ;; You can pass any number of input parameters to a query, and these parameters be used for relations as well as the full range of value types.
 
-;; For example, let's say you have the vector `["James Cameron" "Arnold Schwarzenegger"]` and you want to use this as input to find all movies where these two people collaborated, first you would need to (outside of XTQL) reshape the vector into a valid relation (a vector of maps with named columns) and refer to it via the [`rel`](https://docs.xtdb.com/reference/main/xtql/queries.html#_rel) source operator:
+;; For example, let's say you have the vector `["James Cameron" "Arnold Schwarzenegger"]` and you want to use this as input to find all movies where these two people collaborated. First, outside of XTQL, you would need to reshape the vector into a valid relation (i.e. a vector of maps with named columns) and refer to it via the [`rel`](https://docs.xtdb.com/reference/main/xtql/queries.html#_rel) source operator:
 
 (q '(-> (unify (rel $director-actor-rel [director actor])
                (from :persons [{:xt/id d} {:person/name director}])
@@ -568,7 +588,7 @@
   ...
 ]
 
-;; Let's use this data and the data in our database to find box office earnings for a particular director:
+;; Let's combine this data with the data in our database to find box office earnings for a particular director:
 
 (q '(-> (unify (rel $earnings-data [movie-title box-office-earnings])
                (from :persons [{:xt/id p} {:person/name $director}])
@@ -671,14 +691,14 @@
 (q '(-> (from :movies [movie/title movie/year])
         (where (< movie/year 1984))))
 
-;; Like all other functions and expressions in XTQL, this use of `<` reflects the standard SQL definition and behaviours (in SQL `<` is often referred to as a comparison operator"). This is particular important to keep in mind when creating such expressions that work across multiple types (e.g. comparing different numeric values).
+;; Like all other functions and expressions in XTQL, this use of `<` reflects the standard SQL definition and behaviours (in SQL `<` is often referred to as a comparison operator"). This is particularly important to keep in mind when creating such expressions that work across multiple types (e.g. comparing different numeric values).
 
 ;; You can use [any supported SQL function](https://docs.xtdb.com/reference/main/stdlib.html) from the XTDB standard library:
 
 (q '(-> (from :persons [person/name])
         (where (like person/name "M%"))))
 
-;; Note: if there are functions you need that we have implemented yet, please ask or feel free to open an issue. XTDB does not currently support any extension point for user-defined functions.
+;; Note: if there are functions you need that we have not implemented yet, please ask or feel free to open an issue. XTDB does not currently support any extension point for user-defined functions (UDFs).
 
 ;; ### Exercises
 
@@ -754,7 +774,7 @@
 ;; For example, given a person's birthday, it's easy to calculate the (very approximate) age of a person:
 
 (q '(-> (from :persons [{:person/name $name} person/born])
-        (with {:age (extract "YEAR" (+ #inst "0000" (- (current-date) person/born)))}))
+        (with {:age (- (extract "YEAR" (current-date)) (extract "YEAR" person/born))}))
    {:args {:name "Tina Turner"}})
 
 ;; ## To Be Continued...
@@ -781,12 +801,14 @@
 
 ;; ## Static Build
 
-;; If you an active REPL, run the following
+;; If you're in an active REPL, run the following
 
 (comment (clerk/build! {:paths ["src/learn-xtql-today-with-clojure.clj"]}))
 
 ;; Or otherwise:
 
 ;; 1. Clear the cache (clerk/clear-cache!) (or `rm .clerk/cache/*` / delete the `.clerk` directory)
+
 ;; 2. `clj -J--add-opens=java.base/java.nio=ALL-UNNAMED -X:nextjournal/clerk` (and be sure to not save this namespace in parallel / trigger cache changes)
+
 ;; 3. Browse the HTML file(s) created under `public/build/`

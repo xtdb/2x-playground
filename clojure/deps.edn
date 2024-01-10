@@ -14,13 +14,13 @@
 
  :deps
  {;; for testing only - run XTDB as a server for production(!)
-  com.xtdb.labs/xtdb-core {:mvn/version "dev-SNAPSHOT"}
-  com.xtdb.labs/xtdb-http-server {:mvn/version "dev-SNAPSHOT"}
-  com.xtdb.labs/xtdb-pgwire-server {:mvn/version "dev-SNAPSHOT"}
+  com.xtdb.labs/xtdb-core {:mvn/version "2.0.0-SNAPSHOT"}
+  com.xtdb.labs/xtdb-http-server {:mvn/version "2.0.0-SNAPSHOT"}
+  com.xtdb.labs/xtdb-pgwire-server {:mvn/version "2.0.0-SNAPSHOT"}
 
   ;; XTDB API and http client
-  com.xtdb.labs/xtdb-api {:mvn/version "dev-SNAPSHOT"}
-  com.xtdb.labs/xtdb-http-client-clj {:mvn/version "dev-SNAPSHOT"}
+  com.xtdb.labs/xtdb-api {:mvn/version "2.0.0-SNAPSHOT"}
+  com.xtdb.labs/xtdb-http-client-clj {:mvn/version "2.0.0-SNAPSHOT"}
 
   clj-test-containers/clj-test-containers {:mvn/version "0.7.4"}
 
